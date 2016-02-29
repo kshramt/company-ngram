@@ -29,8 +29,12 @@ def make_ngram_tree(n, words):
     tree = {}
     for i in range(1, n + 1):
         for prevs, nexts in _make_ngram_tree(each_cons(words, i)).items():
-            tree[prevs] = tuple(sorted(nexts.items(), key=lambda p: p[1], reverse=True))
+            tree[prevs] = tuple(sorted(nexts.items(), key=second, reverse=True))
     return (n, tree)
+
+
+def second(xs):
+    return xs[1]
 
 
 def _make_ngram_tree(wordss):
