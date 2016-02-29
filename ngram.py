@@ -108,6 +108,7 @@ def main(argv):
             ensure_ascii=False,
         )
         print()
+        sys.stdout.flush()
 
 
 if __name__ == '__main__':
