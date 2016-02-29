@@ -82,16 +82,15 @@
 (defun company-ngram--query (process n-out-max words)
   (save-excursion
     (set-buffer (process-buffer process))
-    (let ((p (point-max)))
-      (goto-char p)
-      (process-send-string process
-                           (concat (format "%d\t" n-out-max)
-                                   (mapconcat 'identity words "\t")
-                                   "\n"))
-      (accept-process-output process)
-      (goto-char p)
-      (let ((json-array-type 'list))
-        (json-read)))))
+    (erase-buffer)
+    (process-send-string process
+                         (concat (format "%d\t" n-out-max)
+                                 (mapconcat 'identity words "\t")
+                                 "\n"))
+    (accept-process-output process)
+    (goto-char (point-min))
+    (let ((json-array-type 'list))
+      (json-read))))
 
 
 (provide 'company-ngram)
