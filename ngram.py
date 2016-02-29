@@ -7,10 +7,10 @@ import sys
 
 
 def query(ngram_tree, words, n_out_max):
-    n, children = ngram_tree
+    n, tree = ngram_tree
     ret = []
     for i in range(n, 0, -1):
-        ws = _query(children, words, i, n_out_max)
+        ws = _query(tree, words, i, n_out_max)
         n_out_max -= len(ws)
         ret.extend(ws)
         if n_out_max <= 0:
@@ -18,46 +18,34 @@ def query(ngram_tree, words, n_out_max):
     return ret
 
 
-def _query(children, words, n, n_out_max):
-    words = words[max(len(words) - (n - 1), 0):]
-    for word in words:
-        n_children = children.get(word, None)
-        if n_children is None:
-            return []
-        _, children = n_children
-    ret = []
-    i = 0
-    for w, (count, _) in sorted(children.items(),
-                                key=lambda p: p[1][0],
-                                reverse=True):
-        if i >= n_out_max:
-            break
-        ret.append((w, count, n))
-        i += 1
-    return ret
+def _query(tree, words, n, n_out_max):
+    words = tuple(words[max(len(words) - (n - 1), 0):])
+    ret = [(w, count, n) for w, count in tree.get(words, [])]
+    return ret[:min(len(ret), n_out_max)]
 
 
 def make_ngram_tree(n, words):
     assert n > 0
-    return (n, _make_ngram_tree(each_cons(words, n)))
+    tree = {}
+    for i in range(1, n + 1):
+        for prevs, nexts in _make_ngram_tree(each_cons(words, i)).items():
+            tree[prevs] = tuple(sorted(nexts.items(), key=lambda p: p[1], reverse=True))
+    return (n, tree)
 
 
 def _make_ngram_tree(wordss):
-    return {head: (len(more), _make_ngram_tree(more))
-            for head, more
-            in bundle(wordss).items()}
-
-
-def bundle(wordss):
-    ret = {}
-    if wordss[0]:
-        for words in wordss:
-            w = words[0]
-            if w in ret:
-                ret[w].append(words[1:])
+    subtree = {}
+    for words in wordss:
+        prevs = tuple(words[:-1])
+        w = words[-1]
+        if prevs in subtree:
+            if w in subtree[prevs]:
+                subtree[prevs][w] += 1
             else:
-                ret[w] = [words[1:]]
-    return ret
+                subtree[prevs][w] = 1
+        else:
+            subtree[prevs] = {w: 1}
+    return subtree
 
 
 def each_cons(xs, n):
