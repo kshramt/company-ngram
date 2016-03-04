@@ -129,8 +129,7 @@
 (defun company-ngram-query (words)
   (company-ngram--query company-ngram-process company-ngram-n-out-max words))
 (defun company-ngram--query (process n-out-max words)
-  (save-excursion
-    (set-buffer (process-buffer process))
+  (with-current-buffer (process-buffer process)
     (erase-buffer)
     (process-send-string process
                          (concat (format "%d\t" n-out-max)
