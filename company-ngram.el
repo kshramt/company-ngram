@@ -41,11 +41,62 @@
   :group 'company-ngram
   :require 'company
   )
-(defcustom company-ngram-data-dir "/path/to/data_dir"
+(defcustom company-ngram-n-out-max 2000
+  "Maximum number of candidates"
+  :type 'integer
+  :group 'company-ngram
+  :require 'company
+  )
+(defcustom company-ngram-data-dir "~/data/ngram"
   "`company-ngram-data-dir/*.txt' are loaded"
   :type 'string
   :group 'company-ngram
   :require 'company
+  )
+
+
+(defvar company-ngram-candidates nil)
+(defvar company-ngram-prev-words nil)
+
+
+(defun company-ngram-backend (command &optional arg &rest ignored)
+  (interactive (list 'interactive))
+  (cl-case command
+    (interactive (company-begin-backend 'company-ngram-backend))
+    (prefix (let* ((p2 (point))
+                   (p1 (max (- p2 400) 1))
+                   (s (buffer-substring p1 p2))
+                   )
+              (let ((l (split-string s)))
+                (if (string-suffix-p " " s)
+                    (concat " " (mapconcat 'identity (last l (1- company-ngram-n)) " "))
+                  (concat (car (last l)) " " (mapconcat 'identity (last (butlast l) (1- company-ngram-n)) " "))))))
+    (candidates (let* ((l (split-string arg))
+                       (pre (if (string-prefix-p " " arg)
+                                ""
+                              (car l))))
+                  (all-completions pre
+                                   (mapcar (lambda (c)
+                                             (let ((s (car c)))
+                                               (put-text-property 0 1 :count (format "%d" (cadr c)) s)
+                                               (put-text-property 0 1 :n (format "%d" (caddr c)) s)
+                                               s))
+                                           (let ((words (if (eq pre "")
+                                                            l
+                                                          (cdr l))))
+                                             (if (equal words company-ngram-prev-words)
+                                                 (progn words
+                                                        company-ngram-candidates)
+                                               (progn
+                                                 (setq company-ngram-candidates
+                                                       (company-ngram-query (if (eq pre "")
+                                                                                l
+                                                                              (cdr l))))
+                                                 (setq company-ngram-prev-words words)
+                                                 company-ngram-candidates)))))))
+    (annotation (format " %s %s" (get-text-property 0 :count arg) (get-text-property 0 :n arg)))
+    (sorted t)
+    )
   )
 
 
@@ -57,15 +108,14 @@
                        company-ngram-data-dir)
   )
 (defun company-ngram--init (python ngram-py n dir)
-  (if company-ngram-process
-      (progn (kill-process company-ngram-process)
-             (company-ngram-process python ngram-py n dir)
-             (setq company-ngram-process nil))
-    (setq company-ngram-process
-          (company-ngram---init python
-                                ngram-py
-                                n
-                                dir))))
+  (condition-case nil
+      (kill-process company-ngram-process)
+    (error nil))
+  (setq company-ngram-process
+        (company-ngram---init python
+                              ngram-py
+                              n
+                              dir)))
 (defun company-ngram---init (python ngram-py n dir)
   (let ((process-connection-type nil)
         (process-adaptive-read-buffering t))
@@ -78,8 +128,8 @@
                    )))
 
 
-(defun company-ngram-query (n-out-max words)
-  (company-ngram--query company-ngram-process n-out-max words))
+(defun company-ngram-query (words)
+  (company-ngram--query company-ngram-process company-ngram-n-out-max words))
 (defun company-ngram--query (process n-out-max words)
   (save-excursion
     (set-buffer (process-buffer process))
