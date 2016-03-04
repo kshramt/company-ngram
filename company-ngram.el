@@ -63,38 +63,36 @@
   (interactive (list 'interactive))
   (cl-case command
     (interactive (company-begin-backend 'company-ngram-backend))
-    (prefix (let* ((p2 (point))
-                   (p1 (max (- p2 400) 1))
-                   (s (buffer-substring p1 p2))
-                   )
-              (let ((l (split-string s)))
-                (if (string-suffix-p " " s)
-                    (concat " " (mapconcat 'identity (last l (1- company-ngram-n)) " "))
-                  (concat (car (last l)) " " (mapconcat 'identity (last (butlast l) (1- company-ngram-n)) " "))))))
-    (candidates (let* ((l (split-string arg))
-                       (pre (if (string-prefix-p " " arg)
-                                ""
-                              (car l))))
-                  (all-completions pre
-                                   (mapcar (lambda (c)
-                                             (let ((s (car c)))
-                                               (put-text-property 0 1 :count (format "%d" (cadr c)) s)
-                                               (put-text-property 0 1 :n (format "%d" (caddr c)) s)
-                                               s))
-                                           (let ((words (if (eq pre "")
-                                                            l
-                                                          (cdr l))))
-                                             (if (equal words company-ngram-prev-words)
-                                                 (progn words
-                                                        company-ngram-candidates)
-                                               (progn
-                                                 (setq company-ngram-candidates
-                                                       (company-ngram-query (if (eq pre "")
-                                                                                l
-                                                                              (cdr l))))
-                                                 (setq company-ngram-prev-words words)
-                                                 company-ngram-candidates)))))))
-    (annotation (format " %s %s" (get-text-property 0 :count arg) (get-text-property 0 :n arg)))
+    (prefix (cons
+             (let* ((p2 (point))
+                    (p1 (max (- p2 200) 1))
+                    (s (buffer-substring p1 p2))
+                    )
+               (let ((l (split-string s)))
+                 (if (string-suffix-p " " s)
+                     (let ((ret " "))
+                       (put-text-property 0 1 :words (last l (1- company-ngram-n)) ret)
+                       ret)
+                   (let ((ret (car (last l))))
+                     (put-text-property 0 1 :words (last (butlast l) (1- company-ngram-n)) ret)
+                     ret))))
+             t))
+    (candidates (let* ((words (get-text-property 0 :words arg)))
+                  (all-completions arg
+                                   (if (equal words company-ngram-prev-words)
+                                       company-ngram-candidates
+                                     (progn
+                                       (setq company-ngram-candidates
+                                             (mapcar (lambda (c) (let ((s (car c)))
+                                                                   (put-text-property 0 1 :ann (format "%d %d" (cadr c) (caddr c)) s)
+                                                                   s))
+                                                     (company-ngram-query words)))
+                                       (setq company-ngram-prev-words words)
+                                       (mapcar (lambda (w) (let ((sp " "))
+                                                             (put-text-property 0 1 :ann (get-text-property 0 :ann w) sp)
+                                                             (concat sp w)))
+                                               company-ngram-candidates))))))
+    (annotation (format " %s" (get-text-property 0 :ann arg)))
     (sorted t)
     )
   )
