@@ -1,4 +1,4 @@
-#!/usr/bin/pytyon
+#!/usr/bin/python
 
 import collections
 import json

@@ -88,7 +88,6 @@
                          (concat (format "%d\t" n-out-max)
                                  (mapconcat 'identity words "\t")
                                  "\n"))
-    (erase-buffer)
     (let ((bufsizepre 0)
           (bufsize 0))
       (accept-process-output process)
