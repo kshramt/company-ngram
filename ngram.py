@@ -84,6 +84,17 @@ def read_and_split_all_txt(data_dir):
     return ret
 
 
+def uniq(candidates):
+    ws = set()
+    ret = []
+    for candidate in candidates:
+        w = candidate[0]
+        if w not in ws:
+            ws.add(w)
+            ret.append(candidate)
+    return ret
+
+
 def usage_and_exit(s=1):
     print('{} <n> <data_dir> < <query>'.format(__file__), file=sys.stderr)
     exit(s)
@@ -103,7 +114,7 @@ def main(argv):
         except:
             exit()
         json.dump(
-            query(ngram_tree, words[1:], n_out_max),
+            uniq(query(ngram_tree, words[1:], n_out_max)),
             sys.stdout,
             ensure_ascii=False,
             separators=(',', ':'),
