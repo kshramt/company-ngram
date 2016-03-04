@@ -106,6 +106,7 @@ def main(argv):
             query(ngram_tree, words[1:], n_out_max),
             sys.stdout,
             ensure_ascii=False,
+            separators=(',', ':'),
         )
         print()
         sys.stdout.flush()

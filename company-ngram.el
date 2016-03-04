@@ -67,7 +67,8 @@
                                 n
                                 dir))))
 (defun company-ngram---init (python ngram-py n dir)
-  (let ((process-connection-type nil))
+  (let ((process-connection-type nil)
+        (process-adaptive-read-buffering t))
     (start-process "company-ngram"
                    (generate-new-buffer-name "*company-ngram*")
                    python
@@ -87,7 +88,15 @@
                          (concat (format "%d\t" n-out-max)
                                  (mapconcat 'identity words "\t")
                                  "\n"))
-    (accept-process-output process)
+    (erase-buffer)
+    (let ((bufsizepre 0)
+          (bufsize 0))
+      (accept-process-output process)
+      (while (or (= bufsize 0)
+                 (/= bufsize bufsizepre))
+        (sleep-for 0.01) ; 0.001 s seems to be too short to update buffer content
+        (setq bufsizepre bufsize)
+        (setq bufsize (buffer-size))))
     (goto-char (point-min))
     (let ((json-array-type 'list))
       (json-read))))
