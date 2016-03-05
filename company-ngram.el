@@ -107,6 +107,7 @@
     (candidates (get-text-property 0 :candidates arg))
     (annotation (format " %s" (get-text-property 0 :ann arg)))
     (sorted t)
+    (no-cache t)
     )
   )
 
