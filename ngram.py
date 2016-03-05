@@ -87,15 +87,21 @@ def read_and_split_all_txt(data_dir):
     return ret
 
 
-def uniq(candidates):
-    ws = set()
-    ret = []
+def company_filter(candidates):
+    buf = {}
+    i = 0
     for candidate in candidates:
         w = candidate[0]
-        if w not in ws:
-            ws.add(w)
-            ret.append(candidate)
-    return ret
+        if w in buf:
+            buf[w][1] += ' ' + format_count_n(candidate[1:])
+        else:
+            buf[w] = [i, format_count_n(candidate[1:])]
+        i += 1
+    return [(w, ann) for w, (_, ann) in sorted(buf.items(), key=lambda kv: kv[1][0])]
+
+
+def format_count_n(cn):
+    return str(cn[0]) + '.'+ str(cn[1])
 
 
 def usage_and_exit(s=1):
@@ -117,7 +123,7 @@ def main(argv):
         except:
             exit()
         json.dump(
-            uniq(query(ngrams, words[1:], n_out_max)),
+            company_filter(query(ngrams, words[1:], n_out_max)),
             sys.stdout,
             ensure_ascii=False,
             separators=(',', ':'),

@@ -91,7 +91,7 @@
                                   (progn
                                     (setq company-ngram-candidates
                                           (mapcar (lambda (c) (let ((s (car c)))
-                                                                (put-text-property 0 1 :ann (format "%d %d" (cadr c) (caddr c)) s)
+                                                                (put-text-property 0 1 :ann (cadr c) s)
                                                                 s))
                                                   (company-ngram-query words)))
                                     (setq company-ngram-prev-words words)
