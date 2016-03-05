@@ -140,7 +140,7 @@
       (accept-process-output process)
       (while (or (= bufsize 0)
                  (/= bufsize bufsizepre))
-        (sleep-for 0.004) ; 0.001 s seems to be too short to update buffer content
+        (sleep-for 0.006) ; 0.001 s seems to be too short to update buffer content
         (setq bufsizepre bufsize)
         (setq bufsize (buffer-size))))
     (goto-char (point-min))
