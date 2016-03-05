@@ -127,10 +127,10 @@
   (condition-case nil
       (kill-process company-ngram-process)
     (error nil))
-  (with-current-buffer (process-buffer company-ngram-process)
-    (condition-case nil
-        (erase-buffer)
-      (error nil)))
+  (condition-case nil
+      (with-current-buffer (process-buffer company-ngram-process)
+        (erase-buffer))
+    (error nil))
   (setq company-ngram-process
         (company-ngram---init python
                               ngram-py
