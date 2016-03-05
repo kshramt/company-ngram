@@ -71,28 +71,30 @@
                    (words (if is-suffix-space
                               (last l (1- company-ngram-n))
                             (last (butlast l) (1- company-ngram-n))))
-                   (candidates (if (equal words company-ngram-prev-words)
-                                   company-ngram-candidates
-                                 (progn
-                                   (setq company-ngram-candidates
-                                         (mapcar (lambda (c) (let ((s (car c)))
-                                                               (put-text-property 0 1 :ann (format "%d %d" (cadr c) (caddr c)) s)
-                                                               s))
-                                                 (company-ngram-query words)))
-                                   (setq company-ngram-prev-words words)
-                                   (mapcar (lambda (w) (let ((sp " "))
-                                                         (put-text-property 0 1 :ann (get-text-property 0 :ann w) sp)
-                                                         (concat sp w)))
-                                           company-ngram-candidates)
-                                   )))
+                   (pre (if is-suffix-space
+                            " "
+                          (car (last l))))
+                   (candidates (all-completions
+                                pre
+                                (if (equal words company-ngram-prev-words)
+                                    company-ngram-candidates
+                                  (progn
+                                    (setq company-ngram-candidates
+                                          (mapcar (lambda (c) (let ((s (car c)))
+                                                                (put-text-property 0 1 :ann (format "%d %d" (cadr c) (caddr c)) s)
+                                                                s))
+                                                  (company-ngram-query words)))
+                                    (setq company-ngram-prev-words words)
+                                    (mapcar (lambda (w) (let ((sp " "))
+                                                          (put-text-property 0 1 :ann (get-text-property 0 :ann w) sp)
+                                                          (concat sp w)))
+                                            company-ngram-candidates)
+                                    ))))
                    )
               (when candidates
-                (let ((pre (if is-suffix-space
-                               " "
-                             (car (last l)))))
-                  (put-text-property 0 1 :candidates candidates pre)
-                  (cons pre t)))))
-    (candidates (all-completions arg (get-text-property 0 :candidates arg)))
+                (put-text-property 0 1 :candidates candidates pre)
+                (cons pre t))))
+    (candidates (get-text-property 0 :candidates arg))
     (annotation (format " %s" (get-text-property 0 :ann arg)))
     (sorted t)
     )
