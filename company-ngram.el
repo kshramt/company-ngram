@@ -69,6 +69,7 @@
 (defvar company-ngram-prev-words nil)
 
 
+;;;###autoload
 (defun company-ngram-backend (command &optional arg &rest ignored)
   (interactive (list 'interactive))
   (cl-case command
@@ -113,6 +114,9 @@
 
 
 (defvar company-ngram-process nil)
+
+
+;;;###autoload
 (defun company-ngram-init ()
   (company-ngram--init company-ngram-python
                        company-ngram-ngram-py
