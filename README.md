@@ -6,7 +6,7 @@ A company backend for N-gram based completion.
 ; ~/.emacs.d/init.el
 
 (with-eval-after-load 'company-ngram
-  ; ~/data/ngram/*.txt is used as data source
+  ; ~/data/ngram/*.txt are used as data source
   (setq company-ngram-data-dir "~/data/ngram")
   (company-ngram-init)
   )
