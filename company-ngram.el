@@ -148,18 +148,20 @@
 (defun company-ngram--query (process n-out-max words)
   (with-current-buffer (process-buffer process)
     (erase-buffer)
-    (process-send-string process
-                         (concat (format "%d\t" n-out-max)
-                                 (mapconcat 'identity words "\t")
-                                 "\n"))
-    (let ((bufsizepre 0)
-          (bufsize 0))
-      (accept-process-output process)
-      (while (or (= bufsize 0)
-                 (/= bufsize bufsizepre))
-        (sleep-for 0.006) ; 0.001 s seems to be too short to update buffer content
-        (setq bufsizepre bufsize)
-        (setq bufsize (buffer-size))))
+    (with-local-quit
+      (process-send-string process
+                           (concat (format "%d\t" n-out-max)
+                                   (mapconcat 'identity words "\t")
+                                   "\n"))
+      (let ((bufsizepre 0)
+            (bufsize 0))
+        (accept-process-output process)
+        (while (or (= bufsize 0)
+                   (/= bufsize bufsizepre))
+          (sleep-for 0.006) ; 0.001 s seems to be too short to update buffer content
+          (setq bufsizepre bufsize)
+          (setq bufsize (buffer-size))))
+      )
     (goto-char (point-min))
     (let ((json-array-type 'list))
       (json-read))))
