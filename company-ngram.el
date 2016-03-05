@@ -41,7 +41,7 @@
   :group 'company-ngram
   :require 'company
   )
-(defcustom company-ngram-n-out-max 1000
+(defcustom company-ngram-n-out-max 10000
   "Maximum number of candidates"
   :type 'integer
   :group 'company-ngram
