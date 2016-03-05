@@ -3,10 +3,24 @@
 ;; Author: kshramt
 ;; Version: 0.0.1
 ;; Package-Requires: ((company "0.8.0"))
-;; License: GPL version 3
+
+;; This program is distributed under the terms of
+;; the GNU General Public License version 3
+;; (see <http://www.gnu.org/licenses/>).
 ;;
 ;;; Commentary:
-
+;;
+;; ; ~/.emacs.d/init.el
+;;
+;; (with-eval-after-load 'company-ngram
+;;   ; ~/data/ngram/*.txt are used as data
+;;   (setq company-ngram-data-dir "~/data/ngram")
+;;   ; company-ngram does not support python2
+;;   (setq company-ngram-python "/path/to/python3")
+;;   (company-ngram-init)
+;;   )
+;; (require 'company-ngram nil t)
+;;
 ;;; Code:
 
 (require 'cl-lib)

@@ -14,3 +14,7 @@ A company backend for N-gram based completion.
   )
 (require 'company-ngram nil t)
 ```
+
+## License
+
+[The GNU General Public License version 3](http://www.gnu.org/licenses/).
