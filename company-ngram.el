@@ -63,35 +63,36 @@
   (interactive (list 'interactive))
   (cl-case command
     (interactive (company-begin-backend 'company-ngram-backend))
-    (prefix (cons
-             (let* ((p2 (point))
-                    (p1 (max (- p2 200) 1))
-                    (s (buffer-substring p1 p2))
-                    )
-               (let ((l (split-string s)))
-                 (if (string-suffix-p " " s)
-                     (let ((ret " "))
-                       (put-text-property 0 1 :words (last l (1- company-ngram-n)) ret)
-                       ret)
-                   (let ((ret (car (last l))))
-                     (put-text-property 0 1 :words (last (butlast l) (1- company-ngram-n)) ret)
-                     ret))))
-             t))
-    (candidates (let* ((words (get-text-property 0 :words arg)))
-                  (all-completions arg
-                                   (if (equal words company-ngram-prev-words)
-                                       company-ngram-candidates
-                                     (progn
-                                       (setq company-ngram-candidates
-                                             (mapcar (lambda (c) (let ((s (car c)))
-                                                                   (put-text-property 0 1 :ann (format "%d %d" (cadr c) (caddr c)) s)
-                                                                   s))
-                                                     (company-ngram-query words)))
-                                       (setq company-ngram-prev-words words)
-                                       (mapcar (lambda (w) (let ((sp " "))
-                                                             (put-text-property 0 1 :ann (get-text-property 0 :ann w) sp)
-                                                             (concat sp w)))
-                                               company-ngram-candidates))))))
+    (prefix (let* ((p2 (point))
+                   (p1 (max (- p2 200) 1))
+                   (s (buffer-substring p1 p2))
+                   (l (split-string s))
+                   (is-suffix-space (string-suffix-p " " s))
+                   (words (if is-suffix-space
+                              (last l (1- company-ngram-n))
+                            (last (butlast l) (1- company-ngram-n))))
+                   (candidates (if (equal words company-ngram-prev-words)
+                                   company-ngram-candidates
+                                 (progn
+                                   (setq company-ngram-candidates
+                                         (mapcar (lambda (c) (let ((s (car c)))
+                                                               (put-text-property 0 1 :ann (format "%d %d" (cadr c) (caddr c)) s)
+                                                               s))
+                                                 (company-ngram-query words)))
+                                   (setq company-ngram-prev-words words)
+                                   (mapcar (lambda (w) (let ((sp " "))
+                                                         (put-text-property 0 1 :ann (get-text-property 0 :ann w) sp)
+                                                         (concat sp w)))
+                                           company-ngram-candidates)
+                                   )))
+                   )
+              (when candidates
+                (let ((pre (if is-suffix-space
+                               " "
+                             (car (last l)))))
+                  (put-text-property 0 1 :candidates candidates pre)
+                  (cons pre t)))))
+    (candidates (all-completions arg (get-text-property 0 :candidates arg)))
     (annotation (format " %s" (get-text-property 0 :ann arg)))
     (sorted t)
     )
