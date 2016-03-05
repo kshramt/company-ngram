@@ -28,7 +28,7 @@ def _query(ngrams, words, n_out_max):
 def make_ngrams(words, n_max, n_min=1):
     assert n_max > 0
     ret = {}
-    for n in range(n_min, n_max):
+    for n in range(n_min, n_max + 1):
         d = {}
         for prevs, nexts in make_ngram(each_cons(words, n)).items():
             d[prevs] = tuple(sorted(nexts.items(), key=second, reverse=True))
