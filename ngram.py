@@ -6,11 +6,10 @@ import os
 import sys
 
 
-def query(ngram_tree, words, n_out_max):
-    n, tree = ngram_tree
+def query(ngrams, words, n_out_max):
     ret = []
-    for i in range(n, 0, -1):
-        ws = _query(tree, words, i, n_out_max)
+    for i in range(len(words)):
+        ws = _query(ngrams, words[i:], n_out_max)
         n_out_max -= len(ws)
         ret.extend(ws)
         if n_out_max <= 0:
@@ -18,38 +17,42 @@ def query(ngram_tree, words, n_out_max):
     return ret
 
 
-def _query(tree, words, n, n_out_max):
-    words = tuple(words[max(len(words) - (n - 1), 0):])
-    ret = [(w, count, n) for w, count in tree.get(words, [])]
+def _query(ngrams, words, n_out_max):
+    n = len(words) + 1
+    ret = [(w, count, n)
+           for w, count
+           in ngrams.get(n, {}).get(tuple(words), [])]
     return ret[:min(len(ret), n_out_max)]
 
 
-def make_ngram_tree(n, words):
-    assert n > 0
-    tree = {}
-    for i in range(1, n + 1):
-        for prevs, nexts in _make_ngram_tree(each_cons(words, i)).items():
-            tree[prevs] = tuple(sorted(nexts.items(), key=second, reverse=True))
-    return (n, tree)
+def make_ngrams(words, n_max, n_min=1):
+    assert n_max > 0
+    ret = {}
+    for n in range(n_min, n_max):
+        d = {}
+        for prevs, nexts in make_ngram(each_cons(words, n)).items():
+            d[prevs] = tuple(sorted(nexts.items(), key=second, reverse=True))
+        ret[n] = d
+    return ret
 
 
 def second(xs):
     return xs[1]
 
 
-def _make_ngram_tree(wordss):
-    subtree = {}
+def make_ngram(wordss):
+    d = {}
     for words in wordss:
         prevs = tuple(words[:-1])
         w = words[-1]
-        if prevs in subtree:
-            if w in subtree[prevs]:
-                subtree[prevs][w] += 1
+        if prevs in d:
+            if w in d[prevs]:
+                d[prevs][w] += 1
             else:
-                subtree[prevs][w] = 1
+                d[prevs][w] = 1
         else:
-            subtree[prevs] = {w: 1}
-    return subtree
+            d[prevs] = {w: 1}
+    return d
 
 
 def each_cons(xs, n):
@@ -106,7 +109,7 @@ def main(argv):
     n = int(argv[1])
     assert n > 1
     data_dir = argv[2]
-    ngram_tree = make_ngram_tree(n, read_and_split_all_txt(data_dir))
+    ngrams = make_ngrams(read_and_split_all_txt(data_dir), n, 2)
     for l in sys.stdin:
         words = l.split()
         try:
@@ -114,7 +117,7 @@ def main(argv):
         except:
             exit()
         json.dump(
-            uniq(query(ngram_tree, words[1:], n_out_max)),
+            uniq(query(ngrams, words[1:], n_out_max)),
             sys.stdout,
             ensure_ascii=False,
             separators=(',', ':'),
