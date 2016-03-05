@@ -33,25 +33,21 @@
   "Python executable"
   :type 'string
   :group 'company-ngram
-  :require 'company
   )
 (defcustom company-ngram-n 5
   "Maximum N of N-gram"
   :type 'integer
   :group 'company-ngram
-  :require 'company
   )
 (defcustom company-ngram-n-out-max 10000
   "Maximum number of candidates"
   :type 'integer
   :group 'company-ngram
-  :require 'company
   )
 (defcustom company-ngram-data-dir "~/data/ngram"
   "`company-ngram-data-dir/*.txt' are loaded"
   :type 'string
   :group 'company-ngram
-  :require 'company
   )
 
 
