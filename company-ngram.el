@@ -19,6 +19,7 @@
 ;;   ; company-ngram does not support python2
 ;;   (setq company-ngram-python "/path/to/python3")
 ;;   (company-ngram-init)
+;;   (add-to-list 'company-backends 'company-ngram-backend)
 ;;   )
 ;; (require 'company-ngram nil t)
 ;;
