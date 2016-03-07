@@ -2,6 +2,7 @@
 ;;
 ;; Author: kshramt
 ;; Version: 0.0.1
+;; URL: https://github.com/kshramt/company-ngram
 ;; Package-Requires: ((cl-lib "0.5") (company "0.8.0"))
 
 ;; This program is distributed under the terms of
