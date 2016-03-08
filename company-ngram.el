@@ -11,7 +11,6 @@
 ;;
 ;;; Commentary:
 ;;
-;; ; https://github.com/kshramt/company-ngram
 ;; ; ~/.emacs.d/init.el
 ;;
 ;; (with-eval-after-load 'company-ngram
