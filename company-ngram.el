@@ -72,6 +72,20 @@
 
 
 ;;;###autoload
+(defun company-ngram-turn-on ()
+  (interactive)
+  (set (make-local-variable 'company-backends)
+       (append company-backends (list 'company-ngram-backend))))
+
+
+;;;###autoload
+(defun company-ngram-turn-off ()
+  (interactive)
+  (set (make-local-variable 'company-backends)
+       (remove 'company-ngram-backend company-backends)))
+
+
+;;;###autoload
 (defun company-ngram-backend (command &optional arg &rest ignored)
   (interactive (list 'interactive))
   (cl-case command
