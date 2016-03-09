@@ -75,7 +75,7 @@
 (defun company-ngram-turn-on ()
   (interactive)
   (set (make-local-variable 'company-backends)
-       (append company-backends (list 'company-ngram-backend))))
+       (cons 'company-ngram-backend company-backends)))
 
 
 ;;;###autoload
