@@ -160,7 +160,11 @@
     (error nil))
   (condition-case nil
       (with-current-buffer (process-buffer company-ngram-process)
-        (erase-buffer))
+        (erase-buffer)
+        (let ((kill-buffer-query-functions
+               (remove 'process-kill-buffer-query-function
+                       kill-buffer-query-functions)))
+          (kill-buffer)))
     (error nil))
   (setq company-ngram-process
         (company-ngram---init python
