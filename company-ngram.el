@@ -170,7 +170,9 @@
         (company-ngram---init python
                               ngram-py
                               n
-                              dir)))
+                              dir))
+  (buffer-disable-undo (process-buffer company-ngram-process))
+  )
 (defun company-ngram---init (python ngram-py n dir)
   (let ((process-connection-type nil)
         (process-adaptive-read-buffering t))
