@@ -52,7 +52,7 @@
   :type 'string
   :group 'company-ngram
   )
-(defcustom company-ngram-n 5
+(defcustom company-ngram-n 4
   "Maximum N of N-gram"
   :type 'integer
   :group 'company-ngram
