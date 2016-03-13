@@ -119,7 +119,7 @@ def usage_and_exit(s=1):
 
 def load(data_dir, n):
     script_dir = os.path.dirname(__file__)
-    cache_file = os.path.join(script_dir, 'cache', str(data_format_version), str(n), remove_head_slash(data_dir), 'ngram.marshal')
+    cache_file = os.path.join(script_dir, 'cache', str(data_format_version), str(n), remove_head_slash(data_dir), 'ngram.pickle')
     try:
         mt_cache_file = os.path.getmtime(cache_file)
     except:
