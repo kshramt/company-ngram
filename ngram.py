@@ -47,13 +47,12 @@ def make_ngram(words, n):
 
 
 def _make_ngram(d):
-    ngram = {}
     for prevs, nexts in d.items():
         wcs = sorted(nexts.items(), key=second, reverse=True)
         ws = tuple(wc[0] for wc in wcs)
         cs = array.array(type_code_of(wcs[0][1]), [wc[1] for wc in wcs])
-        ngram[prevs] = (ws, cs)
-    return ngram
+        d[prevs] = (ws, cs)
+    return d
 
 
 def type_code_of(n):
