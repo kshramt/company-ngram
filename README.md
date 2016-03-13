@@ -12,11 +12,18 @@ A company backend for N-gram based completion.
   (setq company-ngram-python "/path/to/python3")
   (company-ngram-init)
   (add-to-list 'company-backends 'company-ngram-backend)
-  ; or use `(company-mode-turn-on)` and
-  ; `(company-mode-turn-off)` on individual buffers
+  ; or use `(company-ngram-turn-on)` and
+  ; `(company-ngram-turn-off)` on individual buffers
   )
 (require 'company-ngram nil t)
 ```
+
+I am using this backend with a corpus, whose size is about 70 MB (10,000,000 words).
+
+## Tips
+
+This backend may not work nicely if `company-idle-delay` is too small.
+I am setting `company-idle-delay` as 0.5 s.
 
 ## License
 

@@ -20,8 +20,8 @@
 ;;   (setq company-ngram-python "/path/to/python3")
 ;;   (company-ngram-init)
 ;;   (add-to-list 'company-backends 'company-ngram-backend)
-;;   ; or use `M-x company-mode-turn-on' and
-;;   ; `M-x company-mode-turn-off' on individual buffers
+;;   ; or use `M-x company-ngram-turn-on' and
+;;   ; `M-x company-ngram-turn-off' on individual buffers
 ;;   )
 ;; (require 'company-ngram nil t)
 ;;
