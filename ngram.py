@@ -51,9 +51,20 @@ def _make_ngram(d):
     for prevs, nexts in d.items():
         wcs = sorted(nexts.items(), key=second, reverse=True)
         ws = tuple(wc[0] for wc in wcs)
-        cs = array.array('L', [wc[1] for wc in wcs])
+        cs = array.array(type_code_of(wcs[0][1]), [wc[1] for wc in wcs])
         ngram[prevs] = (ws, cs)
     return ngram
+
+
+def type_code_of(n):
+    if n < 256:
+        return 'B'
+    elif n < 65536:
+        return 'I'
+    elif n < 4294967296:
+        return 'L'
+    else:
+        return 'Q'
 
 
 def second(xs):
