@@ -135,8 +135,7 @@ def _load(txt_file_names, mtime, n):
     cache_file = os.path.join(
         cache_dir,
         str(cache_format_version),
-        str(n),
-        remove_head_slash(os.path.abspath(os.path.dirname(txt_file_names[0]))),
+        str(n) + os.path.abspath(os.path.dirname(txt_file_names[0])),
         'ngram.pickle',
     )
     try:
@@ -179,13 +178,6 @@ def read_and_split_all_txt(file_names):
         with open(f) as fh:
             words.extend(sys.intern(w) for w in fh.read().split())
     return words
-
-
-def remove_head_slash(path):
-    if path.startswith(os.path.sep):
-        return path[1:]
-    else:
-        return path
 
 
 def main(argv):
