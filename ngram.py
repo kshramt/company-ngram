@@ -6,6 +6,7 @@ import json
 import os
 import pickle
 import sys
+import threading
 
 
 data_format_version = 1
@@ -157,7 +158,8 @@ def main(argv):
     n = int(argv[1])
     assert n > 1
     data_dir = argv[2]
-    ngrams = load(data_dir, n)
+    ngrams = {}
+    threading.Thread(target=lambda : ngrams.update(load(data_dir, n))).start()
     for l in sys.stdin:
         words = l.split()
         try:
