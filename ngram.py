@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+import array
 import collections
 import json
 import os
@@ -19,25 +20,14 @@ def query(ngrams, words, n_out_max):
 
 def _query(ngrams, words, n_out_max):
     n = len(words) + 1
-    ret = [(w, count, n)
-           for w, count
-           in ngrams.get(n, {}).get(tuple(words), [])]
-    return ret[:min(len(ret), n_out_max)]
+    ws, cs = ngrams.get(n, {}).get(tuple(words), ((), ()))
+    m = len(ws)
+    return [(w, c, n) for w, c in zip(ws, cs[:min(m, n_out_max)])]
 
 
 def make_ngrams(words, n_max, n_min=1):
     assert n_max > 0
-    ret = {}
-    for n in range(n_min, n_max + 1):
-        d = {}
-        for prevs, nexts in make_ngram(each_cons(words, n)).items():
-            d[prevs] = tuple(sorted(nexts.items(), key=second, reverse=True))
-        ret[n] = d
-    return ret
-
-
-def second(xs):
-    return xs[1]
+    return {n: make_ngram(each_cons(words, n)) for n in range(n_min, n_max + 1)}
 
 
 def make_ngram(wordss):
@@ -52,7 +42,21 @@ def make_ngram(wordss):
                 d[prevs][w] = 1
         else:
             d[prevs] = {w: 1}
-    return d
+    return _make_ngram(d)
+
+
+def _make_ngram(d):
+    ngram = {}
+    for prevs, nexts in d.items():
+        wcs = sorted(nexts.items(), key=second, reverse=True)
+        ws = tuple(wc[0] for wc in wcs)
+        cs = array.array('L', [wc[1] for wc in wcs])
+        ngram[prevs] = (ws, cs)
+    return ngram
+
+
+def second(xs):
+    return xs[1]
 
 
 def each_cons(xs, n):
@@ -83,7 +87,7 @@ def read_and_split_all_txt(data_dir):
     for f in os.listdir(data_dir):
         if f.endswith('.txt'):
             with open(os.path.join(data_dir, f)) as fh:
-                ret.extend(fh.read().split())
+                ret.extend(sys.intern(w) for w in fh.read().split())
     return ret
 
 
@@ -123,7 +127,7 @@ def main(argv):
         except:
             exit()
         json.dump(
-            company_filter(query(ngrams, words[1:], n_out_max)),
+            company_filter(query(ngrams, [sys.intern(w) for w in words[1:]], n_out_max)),
             sys.stdout,
             ensure_ascii=False,
             separators=(',', ':'),
