@@ -209,9 +209,23 @@
           (setq bufsizepre bufsize)
           (setq bufsize (buffer-size))))
       )
-    (goto-char (point-min))
     (let ((json-array-type 'list))
-      (json-read))))
+      (condition-case nil ; todo: generalize
+          (get-json)
+        (error
+         (progn
+           (sleep-for (* 2 company-ngram-sleep-for))
+           (condition-case nil
+               (get-json)
+             (error
+              (progn
+                (sleep-for (* 4 company-ngram-sleep-for))
+                (get-json))))))))))
+
+
+(defun get-json ()
+  (goto-char (point-min))
+  (json-read))
 
 
 (provide 'company-ngram)
