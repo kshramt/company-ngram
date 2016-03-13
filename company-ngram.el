@@ -20,6 +20,8 @@
 ;;   (setq company-ngram-python "/path/to/python3")
 ;;   (company-ngram-init)
 ;;   (add-to-list 'company-backends 'company-ngram-backend)
+;;   ; or use `M-x company-mode-turn-on' and
+;;   ; `M-x company-mode-turn-off' on individual buffers
 ;;   )
 ;; (require 'company-ngram nil t)
 ;;
@@ -45,8 +47,8 @@
           "ngram.py"))
 
 
-(defcustom company-ngram-python "python"
-  "Python executable"
+(defcustom company-ngram-python "python3"
+  "Path to Python executable"
   :type 'string
   :group 'company-ngram
   )
@@ -66,7 +68,7 @@
   :group 'company-ngram
   )
 (defcustom company-ngram-data-dir "~/data/ngram"
-  "`company-ngram-data-dir/*.txt' are loaded"
+  "`company-ngram-data-dir/*.txt' are used to generate N-gram data"
   :type 'string
   :group 'company-ngram
   )
