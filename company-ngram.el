@@ -60,6 +60,11 @@
   :type 'integer
   :group 'company-ngram
   )
+(defcustom company-ngram-sleep-for 0.007
+  "Wait for this amount of time to check whether the process buffer was updated"
+  :type 'float
+  :group 'company-ngram
+  )
 (defcustom company-ngram-data-dir "~/data/ngram"
   "`company-ngram-data-dir/*.txt' are loaded"
   :type 'string
@@ -200,7 +205,7 @@
         (accept-process-output process)
         (while (or (= bufsize 0)
                    (/= bufsize bufsizepre))
-          (sleep-for 0.006) ; 0.001 s seems to be too short to update buffer content
+          (sleep-for company-ngram-sleep-for) ; 0.001 s seems to be too short to update buffer content
           (setq bufsizepre bufsize)
           (setq bufsize (buffer-size))))
       )
