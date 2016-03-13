@@ -9,7 +9,8 @@ import sys
 import threading
 
 
-data_format_version = 1
+cache_format_version = 2
+cache_dir = os.path.join(os.environ['HOME'], '.cache', 'company-ngram')
 
 
 def query(ngrams, words, n_out_max):
@@ -30,16 +31,11 @@ def _query(ngrams, words, n_out_max):
     return [(w, c, n) for w, c in zip(ws, cs[:min(m, n_out_max)])]
 
 
-def make_ngrams(words, n_max, n_min=1):
-    assert n_max > 0
-    return {n: make_ngram(each_cons(words, n)) for n in range(n_min, n_max + 1)}
-
-
-def make_ngram(wordss):
+def make_ngram(words, n):
     d = {}
-    for words in wordss:
-        prevs = tuple(words[:-1])
-        w = words[-1]
+    for ws in each_cons(words, n):
+        prevs = tuple(ws[:-1])
+        w = ws[-1]
         if prevs in d:
             if w in d[prevs]:
                 d[prevs][w] += 1
@@ -117,32 +113,61 @@ def usage_and_exit(s=1):
     exit(s)
 
 
-def load(data_dir, n):
-    script_dir = os.path.dirname(__file__)
-    cache_file = os.path.join(script_dir, 'cache', str(data_format_version), str(n), remove_head_slash(data_dir), 'ngram.pickle')
+def load(data_dir, n_max, n_min=1):
+    txt_file_names = tuple(os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.txt'))
+    mtime = max(os.path.getmtime(txt_file_name) for txt_file_name in txt_file_names)
+    for n in range(n_min, n_max + 1):
+        yield n, _load(txt_file_names, mtime, n)
+
+
+def _load(txt_file_names, mtime, n):
+    cache_file = os.path.join(
+        cache_dir,
+        str(cache_format_version),
+        str(n),
+        remove_head_slash(os.path.abspath(os.path.dirname(txt_file_names[0]))),
+        'ngram.pickle',
+    )
     try:
-        mt_cache_file = os.path.getmtime(cache_file)
+        mtime_cache_file = os.path.getmtime(cache_file)
     except:
-        mt_cache_file = -(2**60)
-    txt_files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.txt')]
-    if all(os.path.getmtime(txt_file) < mt_cache_file for txt_file in txt_files):
+        mtime_cache_file = -(2**60)
+    if mtime_cache_file > mtime:
         try:
             with open(cache_file, 'rb') as fh:
                 return pickle.load(fh)
         except:
             pass
 
+    ngram = make_ngram(read_and_split_all_txt(txt_file_names), n)
+
+    def save():
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, 'wb') as fh:
+            pickle.dump(ngram, fh)
+    threading.Thread(target=save).start()
+
+    return ngram
+
+
+def memoize(f):
+    cache = {}
+    def memoized_f(file_names):
+        fns = tuple(file_names)
+        if fns in cache:
+            return cache[fns]
+        else:
+            return f(fns)
+    return memoized_f
+
+
+@memoize
+def read_and_split_all_txt(file_names):
     words = []
-    for f in txt_files:
+    for f in file_names:
         with open(f) as fh:
             words.extend(sys.intern(w) for w in fh.read().split())
-    ngrams = make_ngrams(words, n, 2)
-
-    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-    with open(cache_file, 'wb') as fh:
-        pickle.dump(ngrams, fh)
-
-    return ngrams
+    return words
 
 
 def remove_head_slash(path):
@@ -159,7 +184,10 @@ def main(argv):
     assert n > 1
     data_dir = argv[2]
     ngrams = {}
-    threading.Thread(target=lambda : ngrams.update(load(data_dir, n))).start()
+    def lazy_load():
+        for _n, ngram in load(data_dir, n, 2):
+            ngrams[_n] = ngram
+    threading.Thread(target=lazy_load).start()
     for l in sys.stdin:
         words = l.split()
         try:
