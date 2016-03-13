@@ -79,7 +79,8 @@ def each_cons(xs, n):
 
 
 def _each_cons(xs, n):
-    return [xs[i:i+n] for i in range(len(xs) - (n - 1))]
+    for i in range(len(xs) - (n - 1)):
+        yield xs[i:i+n]
 
 
 def _each_cons_iter(xs, n):
