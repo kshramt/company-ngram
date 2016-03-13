@@ -4,7 +4,11 @@ import array
 import collections
 import json
 import os
+import pickle
 import sys
+
+
+data_format_version = 1
 
 
 def query(ngrams, words, n_out_max):
@@ -21,7 +25,7 @@ def query(ngrams, words, n_out_max):
 def _query(ngrams, words, n_out_max):
     n = len(words) + 1
     ws, cs = ngrams.get(n, {}).get(tuple(words), ((), ()))
-    m = len(ws)
+    m = len(cs)
     return [(w, c, n) for w, c in zip(ws, cs[:min(m, n_out_max)])]
 
 
@@ -82,12 +86,11 @@ def _each_cons_iter(xs, n):
         yield ret
 
 
-def read_and_split_all_txt(data_dir):
+def read_and_split_all_txt(files):
     ret = []
-    for f in os.listdir(data_dir):
-        if f.endswith('.txt'):
-            with open(os.path.join(data_dir, f)) as fh:
-                ret.extend(sys.intern(w) for w in fh.read().split())
+    for f in files:
+        with open(f) as fh:
+            ret.extend(sys.intern(w) for w in fh.read().split())
     return ret
 
 
@@ -113,13 +116,48 @@ def usage_and_exit(s=1):
     exit(s)
 
 
+def load(data_dir, n):
+    script_dir = os.path.dirname(__file__)
+    cache_file = os.path.join(script_dir, 'cache', str(data_format_version), str(n), remove_head_slash(data_dir), 'ngram.marshal')
+    try:
+        mt_cache_file = os.path.getmtime(cache_file)
+    except:
+        mt_cache_file = -(2**60)
+    txt_files = [os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.txt')]
+    if all(os.path.getmtime(txt_file) < mt_cache_file for txt_file in txt_files):
+        try:
+            with open(cache_file, 'rb') as fh:
+                return pickle.load(fh)
+        except:
+            pass
+
+    words = []
+    for f in txt_files:
+        with open(f) as fh:
+            words.extend(sys.intern(w) for w in fh.read().split())
+    ngrams = make_ngrams(words, n, 2)
+
+    os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+    with open(cache_file, 'wb') as fh:
+        pickle.dump(ngrams, fh)
+
+    return ngrams
+
+
+def remove_head_slash(path):
+    if path.startswith(os.path.sep):
+        return path[1:]
+    else:
+        return path
+
+
 def main(argv):
     if len(argv) != 3:
         usage_and_exit()
     n = int(argv[1])
     assert n > 1
     data_dir = argv[2]
-    ngrams = make_ngrams(read_and_split_all_txt(data_dir), n, 2)
+    ngrams = load(data_dir, n)
     for l in sys.stdin:
         words = l.split()
         try:
