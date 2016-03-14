@@ -214,11 +214,10 @@
 
 
 (defun company-ngram-plain-wait ()
-  (let ((i 0)
-        (n (1+ (ceiling (/ 1 company-ngram-sleep-for)))))
-    (while (and (not (company-ngram-plain-ok-p)) (< i n))
+  (let ((i (1+ (ceiling (/ 1 company-ngram-sleep-for)))))
+    (while (and (not (company-ngram-plain-ok-p)) (> i 0))
       (sleep-for company-ngram-sleep-for)
-      (incf i))
+      (decf i))
     (if (not (company-ngram-plain-ok-p))
         (error "company-ngram: read timeout"))))
 
