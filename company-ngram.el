@@ -219,7 +219,7 @@
       (sleep-for company-ngram-sleep-for)
       (decf i))
     (if (not (company-ngram-plain-ok-p))
-        (error "company-ngram: read timeout"))))
+        (signal 'end-of-file nil))))
 
 
 (defun company-ngram-plain-ok-p ()
