@@ -18,8 +18,6 @@ A company backend for N-gram based completion.
 (require 'company-ngram nil t)
 ```
 
-I am using this backend with a corpus, whose size is about 70 MB (10,000,000 words).
-
 ## Tips
 
 This backend may not work nicely if `company-idle-delay` is too small.
