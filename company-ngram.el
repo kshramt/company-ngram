@@ -213,19 +213,19 @@
       )
     (let ((json-array-type 'list))
       (condition-case nil ; todo: generalize
-          (get-json)
+          (company-ngram-get-json)
         (error
          (progn
            (sleep-for (* 2 company-ngram-sleep-for))
            (condition-case nil
-               (get-json)
+               (company-ngram-get-json)
              (error
               (progn
                 (sleep-for (* 4 company-ngram-sleep-for))
-                (get-json))))))))))
+                (company-ngram-get-json))))))))))
 
 
-(defun get-json ()
+(defun company-ngram-get-json ()
   (goto-char (point-min))
   (json-read))
 
