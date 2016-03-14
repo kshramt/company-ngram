@@ -94,14 +94,6 @@ def _each_cons_iter(xs, n):
         yield ret
 
 
-def read_and_split_all_txt(files):
-    ret = []
-    for f in files:
-        with open(f) as fh:
-            ret.extend(sys.intern(w) for w in fh.read().split())
-    return ret
-
-
 def company_filter(candidates):
     buf = {}
     i = 0
