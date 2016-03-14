@@ -197,14 +197,29 @@ def main(argv):
             n_out_max = int(words[0])
         except:
             exit()
-        json.dump(
-            company_filter(query(ngrams, [sys.intern(w) for w in words[1:]], n_out_max)),
-            sys.stdout,
-            ensure_ascii=False,
-            separators=(',', ':'),
-        )
-        print()
+        dump(company_filter(query(ngrams, [sys.intern(w) for w in words[1:]], n_out_max)))
         sys.stdout.flush()
+
+
+def dump(results):
+    dump_plain(results)
+
+
+def dump_plain(results):
+    for w, ann in results:
+        print(w + '\t' + ann)
+    print()
+    print()
+
+
+def dump_json(results):
+    json.dump(
+        results,
+        sys.stdout,
+        ensure_ascii=False,
+        separators=(',', ':'),
+    )
+    print()
 
 
 if __name__ == '__main__':

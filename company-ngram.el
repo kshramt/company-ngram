@@ -202,32 +202,32 @@
                            (concat (format "%d\t" n-out-max)
                                    (mapconcat 'identity words "\t")
                                    "\n"))
-      (let ((bufsizepre 0)
-            (bufsize 0))
-        (accept-process-output process)
-        (while (or (= bufsize 0)
-                   (/= bufsize bufsizepre))
-          (sleep-for company-ngram-sleep-for) ; 0.001 s seems to be too short to update buffer content
-          (setq bufsizepre bufsize)
-          (setq bufsize (buffer-size))))
       )
-    (let ((json-array-type 'list))
-      (condition-case nil ; todo: generalize
-          (company-ngram-get-json)
-        (error
-         (progn
-           (sleep-for (* 2 company-ngram-sleep-for))
-           (condition-case nil
-               (company-ngram-get-json)
-             (error
-              (progn
-                (sleep-for (* 4 company-ngram-sleep-for))
-                (company-ngram-get-json))))))))))
+    (company-ngram-plain-wait)
+    (company-ngram-get-plain)
+    ))
 
 
-(defun company-ngram-get-json ()
-  (goto-char (point-min))
-  (json-read))
+(defun company-ngram-get-plain ()
+  (mapcar (lambda (l) (split-string l "\t"))
+          (split-string (buffer-string) "\n" t)))
+
+
+(defun company-ngram-plain-wait ()
+  (let ((i 0)
+        (n (1+ (ceiling (/ 1 company-ngram-sleep-for)))))
+    (while (and (not (company-ngram-plain-ok-p)) (< i n))
+      (sleep-for company-ngram-sleep-for)
+      (incf i))
+    (if (not (company-ngram-plain-ok-p))
+        (error "company-ngram: read timeout"))))
+
+
+(defun company-ngram-plain-ok-p ()
+  (let ((pmax (point-max)))
+    (equal (buffer-substring (max (- pmax 3) 1)
+                             pmax)
+           "\n\n\n")))
 
 
 (provide 'company-ngram)
