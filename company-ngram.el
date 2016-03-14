@@ -108,7 +108,7 @@
 
 (defun company-ngram--prefix ()
   (let* ((p2 (point))
-         (p1 (max (- p2 200) 1))
+         (p1 (max (- p2 (* 30 company-ngram-n)) 1)) ; length of the longest word in /usr/share/dict/words was 24
          (s (buffer-substring p1 p2))
          (l (split-string s))
          (is-suffix-space (string-suffix-p " " s))
