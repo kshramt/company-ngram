@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import array
+import bisect
 import collections
 import json
 import os
@@ -9,106 +10,30 @@ import sys
 import threading
 
 
-cache_format_version = 2
+cache_format_version = 3
 cache_dir = os.path.join(os.environ['HOME'], '.cache', 'company-ngram')
 
 
-def query(ngrams, words, n_out_max):
-    ret = []
-    for i in range(len(words)):
-        ws = _query(ngrams, words[i:], n_out_max)
-        n_out_max -= len(ws)
-        ret.extend(ws)
-        if n_out_max <= 0:
-            break
-    return ret
-
-
-def _query(ngrams, words, n_out_max):
-    n = len(words) + 1
-    ws, cs = ngrams.get(n, {}).get(tuple(words), ((), ()))
-    m = len(cs)
-    return [(w, c, n) for w, c in zip(ws, cs[:min(m, n_out_max)])]
-
-
-def make_ngram(words, n):
-    d = {}
-    for ws in each_cons(words, n):
-        prevs = tuple(ws[:-1])
-        w = ws[-1]
-        if prevs in d:
-            if w in d[prevs]:
-                d[prevs][w] += 1
-            else:
-                d[prevs][w] = 1
-        else:
-            d[prevs] = {w: 1}
-    return _make_ngram(d)
-
-
-def _make_ngram(d):
-    for prevs, nexts in d.items():
-        wcs = sorted(nexts.items(), key=second, reverse=True)
-        ws = tuple(wc[0] for wc in wcs)
-        cs = array.array(type_code_of(wcs[0][1]), [wc[1] for wc in wcs])
-        d[prevs] = (ws, cs)
-    return d
-
-
-def type_code_of(n):
-    if n < 256:
-        return 'B'
-    elif n < 65536:
-        return 'I'
-    elif n < 4294967296:
-        return 'L'
-    else:
-        return 'Q'
-
-
-def second(xs):
-    return xs[1]
-
-
-def each_cons(xs, n):
-    assert n >= 1
-    if isinstance(xs, collections.Iterator):
-        return _each_cons_iter(xs, n)
-    else:
-        return _each_cons(xs, n)
-
-
-def _each_cons(xs, n):
-    for i in range(len(xs) - (n - 1)):
-        yield xs[i:i+n]
-
-
-def _each_cons_iter(xs, n):
-    ret = []
-    for _ in range(n):
-        ret.append(next(xs))
-    yield ret
-    for x in xs:
-        ret = ret[1:]
-        ret.append(x)
-        yield ret
-
-
-def company_filter(candidates):
-    buf = {}
-    i = 0
-    for candidate in candidates:
-        w = candidate[0]
-        if w in buf:
-            buf[w][1] += ' ' + format_count_n(candidate[1:])
-        else:
-            buf[w] = [i, format_count_n(candidate[1:])]
-        i += 1
-    return [(w, ann) for w, (_, ann) in sorted(buf.items(), key=lambda kv: kv[1][0])]
-
-
-def format_count_n(cn):
-    return str(cn[0]) + '.'+ str(cn[1])
+def main(argv):
+    if len(argv) != 3:
+        usage_and_exit()
+    n = int(argv[1])
+    assert n > 1
+    data_dir = argv[2]
+    # tree = {}
+    tree = []
+    def lazy_load():
+        # tree.update(load(data_dir, n))
+        tree.extend(load(data_dir, n))
+    threading.Thread(target=lazy_load).start()
+    for l in sys.stdin:
+        words = l.split()
+        try:
+            n_out_max = int(words[0])
+        except:
+            exit()
+        dump(company_filter(query(tree, [w for w in words[1:]], n_out_max)))
+        sys.stdout.flush()
 
 
 def usage_and_exit(s=1):
@@ -116,14 +41,9 @@ def usage_and_exit(s=1):
     exit(s)
 
 
-def load(data_dir, n_max, n_min=1):
+def load(data_dir, n):
     txt_file_names = tuple(os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.txt'))
     mtime = max(os.path.getmtime(txt_file_name) for txt_file_name in txt_file_names)
-    for n in range(n_min, n_max + 1):
-        yield n, _load(txt_file_names, mtime, n)
-
-
-def _load(txt_file_names, mtime, n):
     cache_file = os.path.join(
         cache_dir,
         str(cache_format_version),
@@ -141,29 +61,17 @@ def _load(txt_file_names, mtime, n):
         except:
             pass
 
-    ngram = make_ngram(read_and_split_all_txt(txt_file_names), n)
+    tree = make_tree(each_cons(read_and_split_all_txt(txt_file_names), n))
 
     def save():
         os.makedirs(os.path.dirname(cache_file), exist_ok=True)
         with open(cache_file, 'wb') as fh:
-            pickle.dump(ngram, fh)
+            pickle.dump(tree, fh)
     threading.Thread(target=save).start()
 
-    return ngram
+    return tree
 
 
-def memoize(f):
-    cache = {}
-    def memoized_f(file_names):
-        fns = tuple(file_names)
-        if fns in cache:
-            return cache[fns]
-        else:
-            return f(fns)
-    return memoized_f
-
-
-@memoize
 def read_and_split_all_txt(file_names):
     words = []
     for f in file_names:
@@ -172,25 +80,121 @@ def read_and_split_all_txt(file_names):
     return words
 
 
-def main(argv):
-    if len(argv) != 3:
-        usage_and_exit()
-    n = int(argv[1])
-    assert n > 1
-    data_dir = argv[2]
-    ngrams = {}
-    def lazy_load():
-        for _n, ngram in load(data_dir, n, 2):
-            ngrams[_n] = ngram
-    threading.Thread(target=lazy_load).start()
-    for l in sys.stdin:
-        words = l.split()
+def make_tree(ngrams):
+    if ngrams:
+        ngrams.sort()
+        return _make_tree(ngrams)
+    else:
+        return ()
+
+
+def _make_tree(ngrams):
+    words = []
+    counts = []
+    childrens = []
+    pre = ngrams[0][0]
+    c = 0
+    if len(ngrams[0]) > 1:
+        children = []
+        for ngram in ngrams:
+            w = ngram[0]
+            if w == pre:
+                c += 1
+                children.append(ngram[1:])
+            else:
+                words.append(pre)
+                counts.append(c)
+                update_childrens(childrens, children)
+                pre = w
+                c = 1
+                children = [ngram[1:]]
+        words.append(pre)
+        counts.append(c)
+        update_childrens(childrens, children)
+    else:
+        for ngram in ngrams:
+            w = ngram[0]
+            if w == pre:
+                c += 1
+            else:
+                words.append(pre)
+                counts.append(c)
+                pre = w
+                c = 1
+        words.append(pre)
+        counts.append(c)
+    return (
+        words,
+        compress_ints(counts),
+        tuple(childrens),
+    )
+
+
+def compress_ints(ints):
+    if len(ints) < 5:
+        return tuple(ints)
+    else:
+        imax = max(ints)
+        if imax > 65535:
+            return tuple(ints)
+        else:
+            return array.array(type_code_of(imax), ints)
+
+
+def update_childrens(childrens, children):
+    childrens.append(_make_tree(children))
+
+
+def company_filter(wcns):
+    for w, c, n in wcns:
+        yield w, format_count_n(c, n)
+
+
+def format_count_n(c, n):
+    return str(c) + '.' + str(n)
+
+
+def query(tree, ngram, n_out_max):
+    return take(_query(tree, ngram), n_out_max)
+
+
+def take(xs, n):
+    xs = iter(xs)
+    for i in range(n):
+        yield next(xs)
+
+
+def _query(tree, ngram):
+    seen = set()
+    nmax = len(ngram) + 1
+    for i in range(len(ngram)):
+        n = nmax - i
+        for w, c in candidates(tree, ngram[i:]):
+            if w in seen:
+                pass
+            else:
+                yield (w, c, n)
+                seen.add(w)
+
+
+def candidates(tree, ngram):
+    if ngram:
+        if len(tree[2]) < 3:
+            return ()
         try:
-            n_out_max = int(words[0])
-        except:
-            exit()
-        dump(company_filter(query(ngrams, [sys.intern(w) for w in words[1:]], n_out_max)))
-        sys.stdout.flush()
+            i = index(tree[0], ngram[0])
+        except ValueError:
+            return ()
+        return candidates(tree[2][i], ngram[1:])
+    else:
+        return sorted(zip(tree[0], tree[1]), key=second, reverse=True)
+
+
+def index(xs, x):
+    i = bisect.bisect_left(xs, x)
+    if i < len(xs) and xs[i] == x:
+        return i
+    raise ValueError
 
 
 def dump(results):
@@ -212,6 +216,48 @@ def dump_json(results):
         separators=(',', ':'),
     )
     print()
+
+
+def type_code_of(n):
+    if n < 256:
+        return 'B'
+    elif n < 65536:
+        return 'I'
+    elif n < 4294967296:
+        return 'L'
+    else:
+        return 'Q'
+
+
+def first(x):
+    return x[0]
+
+
+def second(x):
+    return x[1]
+
+
+def each_cons(xs, n):
+    assert n >= 1
+    if isinstance(xs, collections.Iterator):
+        return _each_cons_iter(xs, n)
+    else:
+        return _each_cons(xs, n)
+
+
+def _each_cons(xs, n):
+    return [tuple(xs[i:i+n]) for i in range(len(xs) - (n - 1))]
+
+
+def _each_cons_iter(xs, n):
+    ret = []
+    for _ in range(n):
+        ret.append(next(xs))
+    yield tuple(ret)
+    for x in xs:
+        ret = ret[1:]
+        ret.append(x)
+        yield tuple(ret)
 
 
 if __name__ == '__main__':
