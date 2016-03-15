@@ -178,6 +178,8 @@ def _query(tree, ngram):
 
 
 def candidates(tree, ngram):
+    if not tree:
+        return ()
     if ngram:
         if len(tree[2]) < 3:
             return ()
