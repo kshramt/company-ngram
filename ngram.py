@@ -124,7 +124,7 @@ def _make_tree(ngrams):
         words.append(pre)
         counts.append(c)
     return (
-        words,
+        tuple(words),
         compress_ints(counts),
         tuple(childrens),
     )
