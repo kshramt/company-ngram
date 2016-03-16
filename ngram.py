@@ -131,12 +131,18 @@ def _make_tree(ngrams):
 
 
 def compress_ints(ints):
-    if len(ints) < 5:
+    n_ints = len(ints)
+    if n_ints < 3:
         return tuple(ints)
     else:
         imax = max(ints)
         if imax > 65535:
             return tuple(ints)
+        elif imax > 255:
+            if n_ints < 4:
+                return tuple(ints)
+            else:
+                return array.array(type_code_of(imax), ints)
         else:
             return array.array(type_code_of(imax), ints)
 
