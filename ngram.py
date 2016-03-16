@@ -3,6 +3,7 @@
 import array
 import bisect
 import collections
+import itertools
 import json
 import os
 import pickle
@@ -32,7 +33,7 @@ def main(argv):
             n_out_max = int(words[0])
         except:
             exit()
-        dump(company_filter(search(tree, [w for w in words[1:]], n_out_max)))
+        dump(company_filter(search(tree, words[max(len(words) - (n - 1), 1):], n_out_max)))
         sys.stdout.flush()
 
 
@@ -156,12 +157,23 @@ def update_childrens(childrens, children):
 
 
 def company_filter(wcns):
-    for w, c, n in wcns:
-        yield w, format_count_n(c, n)
+    for w, c, ngram in wcns:
+        yield w, format_ann(c, ngram)
 
 
-def format_count_n(c, n):
-    return str(c) + '.' + str(n)
+def format_ann(c, ngram):
+    return str(c) + format_query(ngram)
+
+
+def format_query(ngram):
+    return '.' + ''.join(map(_format_query, ngram))
+
+
+def _format_query(w):
+    if w is None:
+        return '0'
+    else:
+        return '1'
 
 
 def search(tree, ngram, n_out_max):
@@ -179,28 +191,56 @@ def take(xs, n):
 
 def _search(tree, ngram):
     seen = set()
-    nmax = len(ngram) + 1
-    for i in range(len(ngram)):
-        n = nmax - i
-        for w, c in candidates(tree, ngram[i:]):
-            if w in seen:
-                pass
-            else:
-                yield (w, c, n)
-                seen.add(w)
+    for ngram in fuzzy_queries(ngram):
+        if not all(w is None for w in ngram):
+            for w, c in candidates(tree, ngram):
+                if w not in seen:
+                    yield (w, c, ngram)
+                    seen.add(w)
+
+
+def fuzzy_queries(ngram):
+    for q in itertools.product(*[(w, None) for w in reversed(ngram)]):
+        yield tuple(reversed(q))
 
 
 def candidates(tree, ngram):
+    return sorted(
+        _candidates(tree, optimize_query(ngram)),
+        key=second,
+        reverse=True
+    )
+
+
+def _candidates(tree, ngram):
     if ngram:
         if len(tree) < 3:
             return ()
+        w = ngram[0]
+        more = ngram[1:]
+        if w is None:
+            return itertools.chain.from_iterable(
+                _candidates(child, more)
+                for child
+                in tree[2]
+            )
         try:
-            i = index(tree[0], ngram[0])
+            i = index(tree[0], w)
         except ValueError:
             return ()
-        return candidates(tree[2][i], ngram[1:])
+        return candidates(tree[2][i], more)
     else:
-        return sorted(zip(tree[0], tree[1]), key=second, reverse=True)
+        return zip(tree[0], tree[1])
+
+
+def optimize_query(ngram):
+    i = 0
+    for w in ngram:
+        if w is None:
+            i += 1
+        else:
+            break
+    return ngram[i:]
 
 
 def index(xs, x):
