@@ -32,7 +32,7 @@ def main(argv):
             n_out_max = int(words[0])
         except:
             exit()
-        dump(company_filter(query(tree, [w for w in words[1:]], n_out_max)))
+        dump(company_filter(search(tree, [w for w in words[1:]], n_out_max)))
         sys.stdout.flush()
 
 
@@ -164,9 +164,9 @@ def format_count_n(c, n):
     return str(c) + '.' + str(n)
 
 
-def query(tree, ngram, n_out_max):
+def search(tree, ngram, n_out_max):
     if tree:
-        return take(_query(tree, ngram), n_out_max)
+        return take(_search(tree, ngram), n_out_max)
     else:
         return ()
 
@@ -177,7 +177,7 @@ def take(xs, n):
         yield next(xs)
 
 
-def _query(tree, ngram):
+def _search(tree, ngram):
     seen = set()
     nmax = len(ngram) + 1
     for i in range(len(ngram)):
