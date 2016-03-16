@@ -2,6 +2,28 @@
 
 A company backend for N-gram based completion.
 
+This backend produces completion candidates that are fuzzily matching N-gram data.
+The N-gram data is automatically constructed from `*.txt` files placed directly under `company-ngram-data-dir` directory.
+If you set `company-ngram-n` to `4`, three words before the cursor are used to produce completion candidates.
+
+To mitigate the data sparsity problem, this backend uses a fuzzy-matching strategy.
+Given the following sentence, `Dear Dr. Aki, ▍`, this backend produces completion candidates that match at least one of following prefixes,
+
+```
+Dear Dr. Aki,
+*    Dr. Aki,
+Dear *   Aki,
+*    *   Aki,
+Dear Dr. *
+*    Dr. *
+Dear *   *
+```
+
+where `*` matches an arbitrary word.
+Hence, even if your `*.txt` does not contain the word `Aki`, you still have chance to get completion candidates.
+
+## Configurations
+
 ```elisp
 ; ~/.emacs.d/init.el
 
@@ -15,6 +37,7 @@ A company backend for N-gram based completion.
   ; or use `(company-ngram-turn-on)` and
   ; `(company-ngram-turn-off)` on individual buffers
   )
+
 (require 'company-ngram nil t)
 ```
 
