@@ -224,9 +224,9 @@
 
 (defun company-ngram-plain-ok-p ()
   (let ((pmax (point-max)))
-    (equal (buffer-substring (max (- pmax 3) 1)
+    (equal (buffer-substring (max (- pmax 2) 1)
                              pmax)
-           "\n\n\n")))
+           "\n\n")))
 
 
 (provide 'company-ngram)
