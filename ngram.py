@@ -90,6 +90,8 @@ def make_tree(ngrams):
 
 
 def _make_tree(ngrams):
+    if not ngrams:
+        return ((), ())
     words = []
     counts = []
     childrens = []
