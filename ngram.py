@@ -111,6 +111,11 @@ def _make_tree(ngrams):
         words.append(pre)
         counts.append(c)
         update_childrens(childrens, children)
+        return (
+            tuple(words),
+            compress_ints(counts),
+            tuple(childrens),
+        )
     else:
         for ngram in ngrams:
             w = ngram[0]
@@ -123,11 +128,10 @@ def _make_tree(ngrams):
                 c = 1
         words.append(pre)
         counts.append(c)
-    return (
-        tuple(words),
-        compress_ints(counts),
-        tuple(childrens),
-    )
+        return (
+            tuple(words),
+            compress_ints(counts),
+        )
 
 
 def compress_ints(ints):
@@ -187,7 +191,7 @@ def candidates(tree, ngram):
     if not tree:
         return ()
     if ngram:
-        if len(tree[2]) < 3:
+        if len(tree) < 3:
             return ()
         try:
             i = index(tree[0], ngram[0])
