@@ -221,11 +221,14 @@ def _candidates(tree, ngram):
         w = ngram[0]
         more = ngram[1:]
         if w is None:
-            return itertools.chain.from_iterable(
-                _candidates(child, more)
-                for child
-                in tree[2]
-            )
+            d = {}
+            for child in tree[2]:
+                for w, c in _candidates(child, more):
+                    if w in d:
+                        d[w] += c
+                    else:
+                        d[w] = c
+            return d.items()
         try:
             i = index(tree[0], w)
         except ValueError:
