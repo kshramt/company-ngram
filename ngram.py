@@ -230,7 +230,7 @@ def _candidates(tree, ngram):
             i = index(tree[0], w)
         except ValueError:
             return ()
-        return candidates(tree[2][i], more)
+        return _candidates(tree[2][i], more)
     else:
         return zip(tree[0], tree[1])
 
