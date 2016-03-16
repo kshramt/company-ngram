@@ -165,7 +165,10 @@ def format_count_n(c, n):
 
 
 def query(tree, ngram, n_out_max):
-    return take(_query(tree, ngram), n_out_max)
+    if tree:
+        return take(_query(tree, ngram), n_out_max)
+    else:
+        return ()
 
 
 def take(xs, n):
@@ -188,8 +191,6 @@ def _query(tree, ngram):
 
 
 def candidates(tree, ngram):
-    if not tree:
-        return ()
     if ngram:
         if len(tree) < 3:
             return ()
