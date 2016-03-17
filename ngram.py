@@ -247,6 +247,20 @@ def fuzzy_queries(ngram):
         yield tuple(reversed(q))
 
 
+def memoize_candidates(f):
+    table = {}
+    def memof(tree, ngram):
+        ngram = tuple(ngram)
+        if ngram in table:
+            return table[ngram]
+        else:
+            ret = tuple(f(tree, ngram))
+            table[ngram] = ret
+            return ret
+    return memof
+
+
+@memoize_candidates
 def candidates(tree, ngram):
     return sorted(
         _candidates(tree, optimize_query(ngram)),
