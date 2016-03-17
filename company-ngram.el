@@ -20,8 +20,8 @@
 ;;   (setq company-ngram-python "/path/to/python3")
 ;;   (company-ngram-init)
 ;;   (add-to-list 'company-backends 'company-ngram-backend)
-;;   ; or use `M-x company-ngram-turn-on' and
-;;   ; `M-x company-ngram-turn-off' on individual buffers
+;;   ; or use `M-x turn-on-company-ngram' and
+;;   ; `M-x turn-off-company-ngram' on individual buffers
 ;;   )
 ;; (require 'company-ngram nil t)
 ;;
@@ -84,14 +84,14 @@
 
 
 ;;;###autoload
-(defun company-ngram-turn-on ()
+(defun turn-on-company-ngram ()
   (interactive)
   (set (make-local-variable 'company-backends)
        (cons 'company-ngram-backend company-backends)))
 
 
 ;;;###autoload
-(defun company-ngram-turn-off ()
+(defun turn-offcompany-ngram ()
   (interactive)
   (set (make-local-variable 'company-backends)
        (remove 'company-ngram-backend company-backends)))
