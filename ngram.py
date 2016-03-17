@@ -205,7 +205,7 @@ def compress_ints(ints):
     else:
         imax = max(ints)
         if imax > 65535:
-            return tuple(ints)
+            return array.array(type_code_of(imax), ints)
         elif imax > 255:
             if n_ints < 4:
                 return tuple(ints)
