@@ -8,9 +8,25 @@ import ngram as ng
 
 
 def main(argv):
+    t4()
     t3()
     t2()
     t1()
+
+
+def t4():
+    random.seed(42)
+    m = 200
+    ints = [random.randint(1, 4) for _ in range(m)]
+    n = 4
+    ngrams = ng.each_cons(ints, n)
+    t = ng.make_tree(ngrams)
+    candidates = ng.search(t, (1, 2), 10000)
+    for x, y in zip(
+            candidates,
+            [(2, 7, (1, 2)), (1, 4, (1, 2)), (3, 3, (1, 2)), (4, 2, (1, 2))],
+    ):
+        assert x == y
 
 
 def t3():

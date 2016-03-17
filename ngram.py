@@ -11,7 +11,7 @@ import sys
 import threading
 
 
-cache_format_version = 3
+cache_format_version = 4
 cache_dir = os.path.join(os.environ['HOME'], '.cache', 'company-ngram')
 
 
@@ -21,10 +21,8 @@ def main(argv):
     n = int(argv[1])
     assert n > 1
     data_dir = argv[2]
-    # tree = {}
     tree = []
     def lazy_load():
-        # tree.update(load(data_dir, n))
         tree.extend(load(data_dir, n))
     threading.Thread(target=lazy_load).start()
     for l in sys.stdin:
@@ -81,6 +79,30 @@ def read_and_split_all_txt(file_names):
     return words
 
 
+"""
+This structure is bit ugly but saves some spaces.
+(
+    (
+        # following entries does not exist if l == 0
+        # x > 1
+        (c_kx1, c_kx2, ..., c_kxl)
+        w_kx1,
+        w_kx2,
+        ...
+        w_kxk,
+        # following entries does not exist in leaf nodes
+        child_kx1,
+        child_kx2,
+        ...
+        child_kxk,
+    ),
+    # branches without further branchings
+    # following entries does not exist if no such branches are exist
+    (w_k11,     w_k12,     ..., w_k1m),
+    (w_(k+1)11, w_(k+1)12, ..., w_(k+1)1m),
+    ...
+)
+"""
 def make_tree(ngrams):
     if ngrams:
         ngrams.sort()
@@ -91,50 +113,69 @@ def make_tree(ngrams):
 
 def _make_tree(ngrams):
     if not ngrams:
-        return ((), ())
-    words = []
+        return (((),),)
     counts = []
+    words = []
     childrens = []
-    pre = ngrams[0][0]
+    word1s = []
+    children1s = []
     c = 0
-    if len(ngrams[0]) > 1:
-        children = []
-        for ngram in ngrams:
-            w = ngram[0]
-            if w == pre:
-                c += 1
-                children.append(ngram[1:])
-            else:
-                words.append(pre)
-                counts.append(c)
-                update_childrens(childrens, children)
-                pre = w
-                c = 1
-                children = [ngram[1:]]
-        words.append(pre)
-        counts.append(c)
-        update_childrens(childrens, children)
-        return (
-            tuple(words),
-            compress_ints(counts),
-            tuple(childrens),
-        )
+    pre = ngrams[0][0]
+    children = []
+    for ngram in ngrams:
+        w = ngram[0]
+        if w == pre:
+            c += 1
+            children.append(ngram[1:])
+        else:
+            update(
+                c, pre, children,
+                counts, words, childrens, word1s, children1s,
+            )
+            pre = w
+            c = 1
+            children = [ngram[1:]]
+    update(
+        c, pre, children,
+        counts, words, childrens, word1s, children1s,
+    )
+    return pack_tree(
+        counts, words, childrens,
+        word1s, children1s,
+    )
+
+
+def pack_tree(
+        counts, words, childrens,
+        word1s, children1s,
+):
+    ret = [[]]
+    if counts:
+        ret[0].append(compress_ints(counts))
+        ret[0].extend(words)
+        ret[0].extend(childrens)
+    ret[0] = tuple(ret[0])
+    if word1s:
+        ret.append(tuple(word1s))
+        ret.extend(zip(*children1s))
+    return tuple(ret)
+
+
+def update(
+        c, pre, children,
+        counts, words, childrens, word1s, children1s,
+):
+    assert c > 0
+    if c == 1:
+        assert len(children) == 1
+        word1s.append(pre)
+        if children[0]:
+            children1s.append(children[0])
     else:
-        for ngram in ngrams:
-            w = ngram[0]
-            if w == pre:
-                c += 1
-            else:
-                words.append(pre)
-                counts.append(c)
-                pre = w
-                c = 1
-        words.append(pre)
         counts.append(c)
-        return (
-            tuple(words),
-            compress_ints(counts),
-        )
+        words.append(pre)
+        if children[0]:
+            childrens.append(_make_tree(children))
 
 
 def compress_ints(ints):
@@ -215,27 +256,85 @@ def candidates(tree, ngram):
 
 
 def _candidates(tree, ngram):
-    if ngram:
-        if len(tree) < 3:
-            return ()
-        w = ngram[0]
-        more = ngram[1:]
-        if w is None:
-            d = {}
-            for child in tree[2]:
-                for w, c in _candidates(child, more):
-                    if w in d:
-                        d[w] += c
-                    else:
-                        d[w] = c
-            return d.items()
-        try:
-            i = index(tree[0], w)
-        except ValueError:
-            return ()
-        return _candidates(tree[2][i], more)
+    return merge_candidates(
+        itertools.chain(
+            _candidates2(tree, ngram),
+            _candidates1(tree[1:], ngram)
+        )
+    )
+
+
+def _candidates2(tree, ngram):
+    cs_ws_children = tree[0]
+    if not cs_ws_children:
+        return ()
+    l = len(cs_ws_children[0])
+    if not ngram:
+        return zip(cs_ws_children[1:(1 + l)], cs_ws_children[0])
+
+    if len(cs_ws_children) < 1 + 2*l:
+        assert len(cs_ws_children) == 1 + l
+        return ()
+    assert len(cs_ws_children) == 1 + 2*l
+    w = ngram[0]
+    more = ngram[1:]
+    if w is None:
+        return itertools.chain.from_iterable(
+            _candidates(child, more)
+            for child
+            in cs_ws_children[(l + 1):]
+        )
+    try:
+        i = index(cs_ws_children, w, 1, 1 + l)
+    except ValueError:
+        return ()
+    return _candidates(cs_ws_children[i + l], more)
+
+
+
+def _candidates1(wss, ngram):
+    if not wss:
+        return ()
+    if not ngram:
+        return zip_with_1(wss[0])
+    if ngram[0] is None:
+        ngram_more = ngram[1:]
+        return itertools.chain.from_iterable(
+            match_tuple(ws, ngram_more)
+            for ws
+            in zip(*wss[1:])
+        )
+    try:
+        i = index(wss[0], ngram[0])
+    except ValueError:
+        return ()
+    return match_tuple([ws[i] for ws in wss[1:]], ngram[1:])
+
+
+
+def match_tuple(ws, ngram):
+    n = len(ngram)
+    if n < len(ws):
+        for w, q in zip(ws, ngram):
+            if (w != q) and (q is not None):
+                return ()
+        return ((ws[n], 1),)
     else:
-        return zip(tree[0], tree[1])
+        return ()
+
+
+def merge_candidates(wcs):
+    d = {}
+    for w, c in wcs:
+        if w in d:
+            d[w] += c
+        else:
+            d[w] = c
+    return d.items()
+
+
+def zip_with_1(xs):
+    return zip(xs, (1 for _ in xs))
 
 
 def optimize_query(ngram):
@@ -248,8 +347,10 @@ def optimize_query(ngram):
     return ngram[i:]
 
 
-def index(xs, x):
-    i = bisect.bisect_left(xs, x)
+def index(xs, x, lo=0, hi=None):
+    if hi is None:
+        hi = len(xs)
+    i = bisect.bisect_left(xs, x, lo, hi)
     if i < len(xs) and xs[i] == x:
         return i
     raise ValueError
