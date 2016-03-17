@@ -34,13 +34,29 @@ def main(argv):
             n_out_max = int(words[0])
         except:
             exit()
-        results = company_filter(search(tree, words[max(len(words) - (n - 1), 1):], n_out_max))
+        try:
+            timeout = float(words[1])
+        except:
+            exit()
+        results = company_filter(search(tree, words[max(len(words) - (n - 1), 2):], n_out_max))
         stop, sem, dump = make_dump(results, sem)
         threading.Thread(target=dump).start()
+        if timeout >= 0:
+            threading.Timer(timeout, stop).start()
 
 
 def usage_and_exit(s=1):
-    print('{} <n> <data_dir> < <query>'.format(__file__), file=sys.stderr)
+    print(
+        """
+        echo <query> | {} <n> <data_dir>
+        query: n_out_max timeout any words you want to search
+        n_out_max: restrict number of candidates
+                   no restriction is imposed if n_out_max < 0
+        timeout: restrict response time
+                 no restrict is imposed if timeout < 0
+        """.format(__file__),
+        file=sys.stderr,
+    )
     exit(s)
 
 

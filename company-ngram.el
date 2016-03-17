@@ -67,6 +67,11 @@
   :type 'float
   :group 'company-ngram
   )
+(defcustom company-ngram-timeout 1
+  "Wait at most for this amount of time"
+  :type 'float
+  :group 'company-ngram
+  )
 (defcustom company-ngram-data-dir "~/data/ngram"
   "`company-ngram-data-dir/*.txt' are used to generate N-gram data"
   :type 'string
@@ -195,19 +200,22 @@
 
 
 (defun company-ngram-query (words)
-  (company-ngram--query company-ngram-process company-ngram-n-out-max words))
-(defun company-ngram--query (process n-out-max words)
+  (company-ngram--query company-ngram-process
+                        company-ngram-n-out-max
+                        company-ngram-timeout
+                        words))
+(defun company-ngram--query (process n-out-max timeout words)
   (with-current-buffer (process-buffer process)
     (with-local-quit
-      (company-ngram-plain-wait 1)
+      (company-ngram-plain-wait timeout)
       (erase-buffer)
       (process-send-string process
-                           (concat (format "%d\t" n-out-max)
+                           (concat (format "%d\t%e\t" n-out-max timeout)
                                    (mapconcat 'identity words "\t")
                                    "\n"))
       (accept-process-output process)
       )
-    (company-ngram-plain-wait 1)
+    (company-ngram-plain-wait timeout)
     (company-ngram-get-plain)
     ))
 
