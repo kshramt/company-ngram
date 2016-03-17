@@ -225,7 +225,10 @@ def _format_query(w):
 
 def search(tree, ngram, n_out_max):
     if tree:
-        return take(_search(tree, ngram), n_out_max)
+        ret = _search(tree, ngram)
+        if n_out_max < 0:
+            return ret
+        return take(ret, n_out_max)
     else:
         return ()
 
