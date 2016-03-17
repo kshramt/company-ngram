@@ -178,8 +178,10 @@
                               ngram-py
                               n
                               dir))
-  (buffer-disable-undo (process-buffer company-ngram-process))
-  )
+  (with-current-buffer (process-buffer company-ngram-process)
+    (buffer-disable-undo)
+    (erase-buffer)
+    (insert "\n\n")))
 (defun company-ngram---init (python ngram-py n dir)
   (let ((process-connection-type nil)
         (process-adaptive-read-buffering t))
@@ -197,6 +199,7 @@
 (defun company-ngram--query (process n-out-max words)
   (with-current-buffer (process-buffer process)
     (with-local-quit
+      (company-ngram-plain-wait 1)
       (erase-buffer)
       (process-send-string process
                            (concat (format "%d\t" n-out-max)
@@ -204,7 +207,7 @@
                                    "\n"))
       (accept-process-output process)
       )
-    (company-ngram-plain-wait)
+    (company-ngram-plain-wait 1)
     (company-ngram-get-plain)
     ))
 
@@ -214,8 +217,8 @@
           (split-string (buffer-string) "\n" t)))
 
 
-(defun company-ngram-plain-wait ()
-  (let ((i (1+ (ceiling (/ 1 company-ngram-sleep-for)))))
+(defun company-ngram-plain-wait (l)
+  (let ((i (1+ (ceiling (/ l company-ngram-sleep-for)))))
     (while (and (not (company-ngram-plain-ok-p)) (> i 0))
       (sleep-for company-ngram-sleep-for)
       (decf i))))
