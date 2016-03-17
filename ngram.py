@@ -26,7 +26,7 @@ def main(argv):
     threading.Thread(target=lazy_load).start()
 
     stop = lambda : None
-    sem = threading.Semaphore()
+    lock = threading.Lock()
     for l in sys.stdin:
         stop()
         words = l.split()
@@ -39,7 +39,7 @@ def main(argv):
         except:
             exit()
         results = company_filter(search(tree, words[max(len(words) - (n - 1), 2):], n_out_max))
-        stop, sem, dump = make_dump(results, sem)
+        stop, lock, dump = make_dump(results, lock)
         threading.Thread(target=dump).start()
         if timeout >= 0:
             threading.Timer(timeout, stop).start()
@@ -393,17 +393,17 @@ def index(xs, x, lo=0, hi=None):
     raise ValueError
 
 
-def make_dump(results, sem_pre):
+def make_dump(results, lock_pre):
     stopper = [False]
 
     def stop():
         stopper[0] = True
 
-    sem_cur = threading.Semaphore()
-    sem_cur.acquire()
+    lock_cur = threading.Lock()
+    lock_cur.acquire()
 
     def dump():
-        sem_pre.acquire()
+        lock_pre.acquire()
         for w, ann in results:
             if stopper[0]:
                 break
@@ -411,8 +411,8 @@ def make_dump(results, sem_pre):
         print()
         print()
         sys.stdout.flush()
-        sem_cur.release()
-    return stop, sem_cur, dump
+        lock_cur.release()
+    return stop, lock_cur, dump
 
 
 def type_code_of(n):
