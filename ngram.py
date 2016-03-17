@@ -274,12 +274,15 @@ def memoize_candidates(f):
     table = {}
     def memof(tree, ngram):
         ngram = tuple(ngram)
-        if ngram in table:
-            return table[ngram]
+        if None in ngram:
+            if ngram in table:
+                return table[ngram]
+            else:
+                ret = tuple(f(tree, ngram))
+                table[ngram] = ret
+                return ret
         else:
-            ret = tuple(f(tree, ngram))
-            table[ngram] = ret
-            return ret
+            return f(tree, ngram)
     return memof
 
 
