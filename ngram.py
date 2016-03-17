@@ -24,14 +24,19 @@ def main(argv):
     def lazy_load():
         tree.extend(load(data_dir, n))
     threading.Thread(target=lazy_load).start()
+
+    stop = lambda : None
+    sem = threading.Semaphore()
     for l in sys.stdin:
+        stop()
         words = l.split()
         try:
             n_out_max = int(words[0])
         except:
             exit()
-        dump(company_filter(search(tree, words[max(len(words) - (n - 1), 1):], n_out_max)))
-        sys.stdout.flush()
+        results = company_filter(search(tree, words[max(len(words) - (n - 1), 1):], n_out_max))
+        stop, sem, dump = make_dump(results, sem)
+        threading.Thread(target=dump).start()
 
 
 def usage_and_exit(s=1):
@@ -369,15 +374,26 @@ def index(xs, x, lo=0, hi=None):
     raise ValueError
 
 
-def dump(results):
-    dump_plain(results)
+def make_dump(results, sem_pre):
+    stopper = [False]
 
+    def stop():
+        stopper[0] = True
 
-def dump_plain(results):
-    for w, ann in results:
-        print(w + '\t' + ann)
-    print()
-    print()
+    sem_cur = threading.Semaphore()
+    sem_cur.acquire()
+
+    def dump():
+        sem_pre.acquire()
+        for w, ann in results:
+            if stopper[0]:
+                break
+            print(w + '\t' + ann)
+        print()
+        print()
+        sys.stdout.flush()
+        sem_cur.release()
+    return stop, sem_cur, dump
 
 
 def type_code_of(n):
