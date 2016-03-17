@@ -4,6 +4,8 @@ import array
 import bisect
 import collections
 import itertools
+import logging
+import logging.handlers
 import os
 import pickle
 import sys
@@ -12,9 +14,22 @@ import threading
 
 cache_format_version = 4
 cache_dir = os.path.join(os.environ['HOME'], '.cache', 'company-ngram')
+log_file = os.path.join(cache_dir, 'ngram.py.log')
 
 
 def main(argv):
+    logging.basicConfig(
+        handlers=(
+            logging.handlers.RotatingFileHandler(
+                log_file,
+                maxBytes=10000000,
+                backupCount=2,
+            ),
+        ),
+        format='%(asctime)s\t%(levelname)s\t%(message)s',
+        level=logging.DEBUG,
+    )
+
     if len(argv) != 3:
         usage_and_exit()
     n = int(argv[1])
@@ -276,13 +291,17 @@ def memoize_candidates(f):
         ngram = tuple(ngram)
         if None in ngram:
             if ngram in table:
+                logging.info('HIT!:\t{}\t{}'.format(len(table[ngram]), ngram))
                 return table[ngram]
             else:
                 ret = tuple(f(tree, ngram))
+                logging.info('set:\t{}\t{}'.format(len(ret), ngram))
                 table[ngram] = ret
                 return ret
         else:
-            return f(tree, ngram)
+            ret = f(tree, ngram)
+            logging.info('input:\t{}\t{}'.format(len(ret), ngram))
+            return ret
     return memof
 
 
