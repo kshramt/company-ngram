@@ -196,12 +196,13 @@
   (company-ngram--query company-ngram-process company-ngram-n-out-max words))
 (defun company-ngram--query (process n-out-max words)
   (with-current-buffer (process-buffer process)
-    (erase-buffer)
     (with-local-quit
+      (erase-buffer)
       (process-send-string process
                            (concat (format "%d\t" n-out-max)
                                    (mapconcat 'identity words "\t")
                                    "\n"))
+      (accept-process-output process)
       )
     (company-ngram-plain-wait)
     (company-ngram-get-plain)
@@ -217,9 +218,7 @@
   (let ((i (1+ (ceiling (/ 1 company-ngram-sleep-for)))))
     (while (and (not (company-ngram-plain-ok-p)) (> i 0))
       (sleep-for company-ngram-sleep-for)
-      (decf i))
-    (if (not (company-ngram-plain-ok-p))
-        (signal 'end-of-file nil))))
+      (decf i))))
 
 
 (defun company-ngram-plain-ok-p ()
