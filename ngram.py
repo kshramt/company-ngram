@@ -4,7 +4,6 @@ import array
 import bisect
 import collections
 import itertools
-import json
 import os
 import pickle
 import sys
@@ -378,16 +377,6 @@ def dump_plain(results):
     for w, ann in results:
         print(w + '\t' + ann)
     print()
-    print()
-
-
-def dump_json(results):
-    json.dump(
-        results,
-        sys.stdout,
-        ensure_ascii=False,
-        separators=(',', ':'),
-    )
     print()
 
 
