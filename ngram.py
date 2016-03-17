@@ -230,10 +230,6 @@ def compress_ints(ints):
             return array.array(type_code_of(imax), ints)
 
 
-def update_childrens(childrens, children):
-    childrens.append(_make_tree(children))
-
-
 def company_filter(wcns):
     for w, c, ngram in wcns:
         yield w, format_ann(c, ngram)
