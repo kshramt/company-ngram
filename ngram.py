@@ -184,12 +184,13 @@ def pack_tree(
         counts, words, childrens,
         word1s, children1s,
 ):
-    ret = [[]]
     if counts:
-        ret[0].append(compress_ints(counts))
-        ret[0].extend(words)
-        ret[0].extend(childrens)
-    ret[0] = tuple(ret[0])
+        ret2 = [compress_ints(counts)]
+        ret2.extend(words)
+        ret2.extend(childrens)
+        ret = [tuple(ret2)]
+    else:
+        ret = [()]
     if word1s:
         ret.append(tuple(word1s))
         ret.extend(zip(*children1s))
