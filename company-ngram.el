@@ -62,12 +62,12 @@
   :type 'integer
   :group 'company-ngram
   )
-(defcustom company-ngram-sleep-for 0.007
+(defcustom company-ngram-sleep-for 0.01
   "Time interval (s) to check completeness of output."
   :type 'float
   :group 'company-ngram
   )
-(defcustom company-ngram-timeout 1
+(defcustom company-ngram-timeout 0.5
   "Timeout to wait for output from the server"
   :type 'float
   :group 'company-ngram
