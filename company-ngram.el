@@ -63,12 +63,12 @@
   :group 'company-ngram
   )
 (defcustom company-ngram-sleep-for 0.007
-  "Wait for this amount of time to check whether the process buffer was updated"
+  "Time interval (s) to check completeness of output."
   :type 'float
   :group 'company-ngram
   )
 (defcustom company-ngram-timeout 1
-  "Wait at most for this amount of time"
+  "Timeout to wait for output from the server"
   :type 'float
   :group 'company-ngram
   )
