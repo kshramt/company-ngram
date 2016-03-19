@@ -18,17 +18,7 @@ log_file = os.path.join(cache_dir, 'ngram.py.log')
 
 
 def main(argv):
-    logging.basicConfig(
-        handlers=(
-            logging.handlers.RotatingFileHandler(
-                log_file,
-                maxBytes=10000000,
-                backupCount=2,
-            ),
-        ),
-        format='%(asctime)s\t%(levelname)s\t%(message)s',
-        level=logging.DEBUG,
-    )
+    setup_logging()
 
     if len(argv) != 3:
         usage_and_exit()
@@ -73,6 +63,21 @@ def usage_and_exit(s=1):
         file=sys.stderr,
     )
     exit(s)
+
+
+def setup_logging():
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    logging.basicConfig(
+        handlers=(
+            logging.handlers.RotatingFileHandler(
+                log_file,
+                maxBytes=10000000,
+                backupCount=2,
+            ),
+        ),
+        format='%(asctime)s\t%(levelname)s\t%(message)s',
+        level=logging.DEBUG,
+    )
 
 
 def load(data_dir, n):
