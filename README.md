@@ -34,8 +34,8 @@ Hence, even if your `*.txt` does not contain the word `Aki`, you still have chan
   (setq company-ngram-python "/path/to/python3")
   (company-ngram-init)
   (add-to-list 'company-backends 'company-ngram-backend)
-  ; or use `(turn-on-company-ngram)` and
-  ; `(turn-off-company-ngram)` on individual buffers
+  ; or use `M-x turn-on-company-ngram` and
+  ; `M-x turn-off-company-ngram` on individual buffers
   )
 
 (require 'company-ngram nil t)
