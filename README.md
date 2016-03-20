@@ -44,7 +44,7 @@ Hence, even if your `*.txt` does not contain the word `Aki`, you still have chan
 ## Tips
 
 This backend may not work nicely if `company-idle-delay` is too small.
-I am setting `company-idle-delay` as 0.5 s.
+I am setting `company-idle-delay` as 0.3 s.
 
 ## License
 
