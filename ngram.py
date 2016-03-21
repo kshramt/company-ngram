@@ -18,17 +18,7 @@ log_file = os.path.join(cache_dir, 'ngram.py.log')
 
 
 def main(argv):
-    logging.basicConfig(
-        handlers=(
-            logging.handlers.RotatingFileHandler(
-                log_file,
-                maxBytes=10000000,
-                backupCount=2,
-            ),
-        ),
-        format='%(asctime)s\t%(levelname)s\t%(message)s',
-        level=logging.DEBUG,
-    )
+    setup_logging()
 
     if len(argv) != 3:
         usage_and_exit()
@@ -73,6 +63,21 @@ def usage_and_exit(s=1):
         file=sys.stderr,
     )
     exit(s)
+
+
+def setup_logging():
+    os.makedirs(os.path.dirname(log_file), exist_ok=True)
+    logging.basicConfig(
+        handlers=(
+            logging.handlers.RotatingFileHandler(
+                log_file,
+                maxBytes=10000000,
+                backupCount=2,
+            ),
+        ),
+        format='%(asctime)s\t%(levelname)s\t%(message)s',
+        level=logging.DEBUG,
+    )
 
 
 def load(data_dir, n):
@@ -201,9 +206,9 @@ def update(
         c, pre, children,
         counts, words, childrens, word1s, children1s,
 ):
-    #assert c > 0
+    assert c > 0
     if c == 1:
-        #assert len(children) == 1
+        assert len(children) == 1
         word1s.append(pre)
         if children[0]:
             children1s.append(children[0])
@@ -329,9 +334,9 @@ def _candidates2(tree, ngram):
         return zip(cs_ws_children[1:(1 + l)], cs_ws_children[0])
 
     if len(cs_ws_children) < 1 + 2*l:
-        #assert len(cs_ws_children) == 1 + l
+        assert len(cs_ws_children) == 1 + l
         return ()
-    #assert len(cs_ws_children) == 1 + 2*l
+    assert len(cs_ws_children) == 1 + 2*l
     w = ngram[0]
     more = ngram[1:]
     if w is None:
