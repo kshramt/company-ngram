@@ -2,6 +2,8 @@
 
 A company backend for N-gram based completion.
 
+![](screenshot.jpg)
+
 This backend produces completion candidates that are fuzzily matching N-gram data.
 The N-gram data is automatically constructed from `*.txt` files placed directly under `company-ngram-data-dir` directory.
 If you set `company-ngram-n` to `4`, three words before the cursor are used to produce completion candidates.
