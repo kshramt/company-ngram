@@ -2,9 +2,7 @@
 
 A company backend for N-gram based completion.
 
-<figure>
-<img src="screenshot.jpg" style="width: 75%; max-width: 120ex; min-width: 40ex;" />
-</figure>
+![](screenshot.jpg)
 
 This backend produces completion candidates that are fuzzily matching N-gram data.
 The N-gram data is automatically constructed from `*.txt` files placed directly under `company-ngram-data-dir` directory.
