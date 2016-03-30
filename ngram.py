@@ -304,18 +304,16 @@ def memoize_candidates(f):
 @memoize_candidates
 def candidates(tree, ngram):
     return sorted(
-        _candidates(tree, optimize_query(ngram)),
+        count_candidates(_candidates(tree, optimize_query(ngram))),
         key=second,
         reverse=True
     )
 
 
 def _candidates(tree, ngram):
-    return merge_candidates(
-        itertools.chain(
-            _candidates2(tree, ngram),
-            _candidates1(tree[1:], ngram)
-        )
+    return itertools.chain(
+        _candidates2(tree, ngram),
+        _candidates1(tree[1:], ngram)
     )
 
 
@@ -378,7 +376,7 @@ def match_tuple(ws, ngram):
         return ()
 
 
-def merge_candidates(wcs):
+def count_candidates(wcs):
     d = {}
     for w, c in wcs:
         if w in d:
