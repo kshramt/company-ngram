@@ -261,15 +261,9 @@ def search(tree, ngram, n_out_max):
         ret = _search(tree, ngram)
         if n_out_max < 0:
             return ret
-        return take(ret, n_out_max)
+        return itertools.islice(ret, n_out_max)
     else:
         return ()
-
-
-def take(xs, n):
-    xs = iter(xs)
-    for i in range(n):
-        yield next(xs)
 
 
 def _search(tree, ngram):
