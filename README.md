@@ -43,6 +43,12 @@ Hence, even if your `*.txt` does not contain the word `Aki`, you still have chan
 (require 'company-ngram nil t)
 ```
 
+[RFC5661](https://www.rfc-editor.org/rfc/rfc5661.txt) provides handy text data for a quick trial.
+
+```bash
+wget --directory-prefix ~/data/ngram    https://www.rfc-editor.org/rfc/rfc5661.txt
+```
+
 ## Tips
 
 This backend may not work nicely if `company-idle-delay` is too small.
