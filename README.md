@@ -43,10 +43,10 @@ Hence, even if your `*.txt` does not contain the word `Aki`, you still have chan
 (require 'company-ngram nil t)
 ```
 
-[RFC5661](https://www.rfc-editor.org/rfc/rfc5661.txt) provides handy text data for a quick trial.
+[RFC](http://www.rfc-editor.org/rfc-index.html) provides handy text files for a quick trial.
 
 ```bash
-wget --directory-prefix ~/data/ngram    https://www.rfc-editor.org/rfc/rfc5661.txt
+wget --directory-prefix ~/data/ngram    https://www.rfc-editor.org/rfc/rfc{5661,6716,4949}.txt
 ```
 
 ## Tips
