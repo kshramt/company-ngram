@@ -91,7 +91,7 @@
 
 
 ;;;###autoload
-(defun turn-offcompany-ngram ()
+(defun turn-off-company-ngram ()
   (interactive)
   (set (make-local-variable 'company-backends)
        (remove 'company-ngram-backend company-backends)))
