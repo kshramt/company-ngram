@@ -26,11 +26,12 @@ def main(argv):
     assert n > 1
     data_dir = argv[2]
     tree = []
+
     def lazy_load():
         tree.extend(load(data_dir, n))
     threading.Thread(target=lazy_load).start()
 
-    stop = lambda : None
+    stop = lambda: None
     lock = threading.Lock()
     for l in sys.stdin:
         stop()
@@ -119,31 +120,31 @@ def read_and_split_all_txt(file_names):
     return words
 
 
-"""
-This structure is bit ugly but saves some spaces.
-(
-    (
-        # following entries does not exist if l == 0
-        # x > 1
-        (c_kx1, c_kx2, ..., c_kxl)
-        w_kx1,
-        w_kx2,
-        ...
-        w_kxk,
-        # following entries does not exist in leaf nodes
-        child_kx1,
-        child_kx2,
-        ...
-        child_kxk,
-    ),
-    # branches without further branchings
-    # following entries does not exist if no such branches are exist
-    (w_k11,     w_k12,     ..., w_k1m),
-    (w_(k+1)11, w_(k+1)12, ..., w_(k+1)1m),
-    ...
-)
-"""
 def make_tree(ngrams):
+    """
+    This structure is bit ugly but saves some spaces.
+    (
+        (
+            # following entries does not exist if l == 0
+            # x > 1
+            (c_kx1, c_kx2, ..., c_kxl)
+            w_kx1,
+            w_kx2,
+            ...
+            w_kxk,
+            # following entries does not exist in leaf nodes
+            child_kx1,
+            child_kx2,
+            ...
+            child_kxk,
+        ),
+        # branches without further branchings
+        # following entries does not exist if no such branches are exist
+        (w_k11,     w_k12,     ..., w_k1m),
+        (w_(k+1)11, w_(k+1)12, ..., w_(k+1)1m),
+        ...
+    )
+    """
     if ngrams:
         ngrams.sort()
         return _make_tree(ngrams)
@@ -283,6 +284,7 @@ def fuzzy_queries(ngram):
 
 def memoize_candidates(f):
     table = {}
+
     def memof(tree, ngram):
         ngram = tuple(ngram)
         if None in ngram:
@@ -344,7 +346,6 @@ def _candidates2(tree, ngram):
     return _candidates(cs_ws_children[i + l], more)
 
 
-
 def _candidates1(wss, ngram):
     if not wss:
         return ()
@@ -362,7 +363,6 @@ def _candidates1(wss, ngram):
     except ValueError:
         return ()
     return match_tuple([ws[i] for ws in wss[1:]], ngram[1:])
-
 
 
 def match_tuple(ws, ngram):
