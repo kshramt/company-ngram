@@ -1,8 +1,8 @@
 #!/usr/bin/python
 
+import atexit
 import array
 import bisect
-import collections
 import itertools
 import logging
 import logging.handlers
@@ -10,32 +10,93 @@ import os
 import pickle
 import sys
 import threading
+from typing import (
+    Any,
+    Callable,
+    Dict,
+    Iterable,
+    Iterator,
+    List,
+    Mapping,
+    Optional,
+    Sequence,
+    Set,
+    Tuple,
+    TypeVar,
+)
 
 
-cache_format_version = 4
+T = TypeVar('T')
+T1 = TypeVar('T1')
+T2 = TypeVar('T2')
+threadingLock = TypeVar('threadingLock')
+K = TypeVar('K')
+V = TypeVar('V')
+
+cache_format_version = 5
 cache_dir = os.path.join(os.environ['HOME'], '.cache', 'company-ngram')
 log_file = os.path.join(cache_dir, 'ngram.py.log')
 
 
-def main(argv):
+# -------- main
+
+
+def main(argv: List[str]) -> Any:
     setup_logging()
 
     if len(argv) != 3:
         usage_and_exit()
     n = int(argv[1])
     assert n > 1
-    data_dir = argv[2]
-    tree = []
+    data_dir = os.path.realpath(argv[2])
+    logging.info('begin:\t{}\t{}'.format(n, data_dir))
 
-    def lazy_load():
-        tree.extend(load(data_dir, n))
-    threading.Thread(target=lazy_load).start()
+    txt_files = txt_files_of(data_dir)
+    mtime_max = mtime_max_of(txt_files)
+
+    cache_file = os.path.join(
+        cache_dir,
+        'v@{}'.format(cache_format_version),
+        'n@{}'.format(n) + data_dir,
+        'cache.pickle',
+    )
+    cache = {} # type: Dict[Tuple[Optional[str], ...], Any]
+    load_cache(
+        lambda c: cache.update(c),
+        cache_file,
+        mtime_max,
+    )
+
+    def save_cache() -> Any:
+        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+        with open(cache_file, 'wb') as fh:
+            pickle.dump(cache, fh)
+        logging.info('save_cache:\t{}'.format(cache_file))
+    atexit.register(save_cache)
+
+    db_file = os.path.join(
+        cache_dir,
+        'v@{}'.format(cache_format_version),
+        'n@{}'.format(n) + data_dir,
+        'db.pickle',
+    )
+    db = {} # type: Dict[str, Any]
+
+    def lazy_load_db() -> Any:
+        load_db(db, txt_files, n, mtime_max, db_file)
+    threading.Thread(target=lazy_load_db).start()
 
     stop = lambda: None
     lock = threading.Lock()
+    not_found = -1
     for l in sys.stdin:
         stop()
         words = l.split()
+        if not words:
+            exit()
+        if words[0] == 'save_cache':
+            save_cache()
+            continue
         try:
             n_out_max = int(words[0])
         except:
@@ -44,14 +105,20 @@ def main(argv):
             timeout = float(words[1])
         except:
             exit()
-        results = company_filter(search(tree, words[max(len(words) - (n - 1), 2):], n_out_max))
+        results = company_filter(search(
+            db,
+            tuple(words[max(len(words) - (n - 1), 2):]),
+            n_out_max,
+            cache,
+            not_found,
+        ))
         stop, lock, dump = make_dump(results, lock)
         threading.Thread(target=dump).start()
         if timeout >= 0:
             threading.Timer(timeout, stop).start()
 
 
-def usage_and_exit(s=1):
+def usage_and_exit(s: int=1) -> Any:
     print(
         """
         echo <query> | {} <n> <data_dir>
@@ -66,7 +133,7 @@ def usage_and_exit(s=1):
     exit(s)
 
 
-def setup_logging():
+def setup_logging() -> Any:
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     logging.basicConfig(
         handlers=(
@@ -81,344 +148,17 @@ def setup_logging():
     )
 
 
-def load(data_dir, n):
-    txt_file_names = tuple(os.path.join(data_dir, f) for f in os.listdir(data_dir) if f.endswith('.txt'))
-    mtime = max(os.path.getmtime(txt_file_name) for txt_file_name in txt_file_names)
-    cache_file = os.path.join(
-        cache_dir,
-        str(cache_format_version),
-        str(n) + os.path.abspath(os.path.dirname(txt_file_names[0])),
-        'ngram.pickle',
-    )
-    try:
-        mtime_cache_file = os.path.getmtime(cache_file)
-    except:
-        mtime_cache_file = -(2**60)
-    if mtime_cache_file > mtime:
-        try:
-            with open(cache_file, 'rb') as fh:
-                return pickle.load(fh)
-        except:
-            pass
-
-    tree = make_tree(each_cons(read_and_split_all_txt(txt_file_names), n))
-
-    def save():
-        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-        with open(cache_file, 'wb') as fh:
-            pickle.dump(tree, fh)
-    threading.Thread(target=save).start()
-
-    return tree
-
-
-def read_and_split_all_txt(file_names):
-    words = []
-    for f in file_names:
-        with open(f) as fh:
-            words.extend(sys.intern(w) for w in fh.read().split())
-    return words
-
-
-def make_tree(ngrams):
-    """
-    This structure is bit ugly but saves some spaces.
-    (
-        (
-            # following entries does not exist if l == 0
-            # x > 1
-            (c_kx1, c_kx2, ..., c_kxl)
-            w_kx1,
-            w_kx2,
-            ...
-            w_kxk,
-            # following entries does not exist in leaf nodes
-            child_kx1,
-            child_kx2,
-            ...
-            child_kxk,
-        ),
-        # branches without further branchings
-        # following entries does not exist if no such branches are exist
-        (w_k11,     w_k12,     ..., w_k1m),
-        (w_(k+1)11, w_(k+1)12, ..., w_(k+1)1m),
-        ...
-    )
-    """
-    if ngrams:
-        ngrams.sort()
-        return _make_tree(ngrams)
-    else:
-        return ()
-
-
-def _make_tree(ngrams):
-    if not ngrams:
-        return (((),),)
-    counts = []
-    words = []
-    childrens = []
-    word1s = []
-    children1s = []
-    c = 0
-    pre = ngrams[0][0]
-    children = []
-    for ngram in ngrams:
-        w = ngram[0]
-        if w == pre:
-            c += 1
-            children.append(ngram[1:])
-        else:
-            update(
-                c, pre, children,
-                counts, words, childrens, word1s, children1s,
-            )
-            pre = w
-            c = 1
-            children = [ngram[1:]]
-    update(
-        c, pre, children,
-        counts, words, childrens, word1s, children1s,
-    )
-    return pack_tree(
-        counts, words, childrens,
-        word1s, children1s,
-    )
-
-
-def pack_tree(
-        counts, words, childrens,
-        word1s, children1s,
-):
-    if counts:
-        ret2 = [compress_ints(counts)]
-        ret2.extend(words)
-        ret2.extend(childrens)
-        ret = [tuple(ret2)]
-    else:
-        ret = [()]
-    if word1s:
-        ret.append(tuple(word1s))
-        ret.extend(zip(*children1s))
-    return tuple(ret)
-
-
-def update(
-        c, pre, children,
-        counts, words, childrens, word1s, children1s,
-):
-    assert c > 0
-    if c == 1:
-        assert len(children) == 1
-        word1s.append(pre)
-        if children[0]:
-            children1s.append(children[0])
-    else:
-        counts.append(c)
-        words.append(pre)
-        if children[0]:
-            childrens.append(_make_tree(children))
-
-
-def compress_ints(ints):
-    n_ints = len(ints)
-    if n_ints < 3:
-        return tuple(ints)
-    else:
-        imax = max(ints)
-        if imax > 65535:
-            return array.array(type_code_of(imax), ints)
-        elif imax > 255:
-            if n_ints < 4:
-                return tuple(ints)
-            else:
-                return array.array(type_code_of(imax), ints)
-        else:
-            return array.array(type_code_of(imax), ints)
-
-
-def company_filter(wcns):
-    for w, c, ngram in wcns:
-        yield w, format_ann(c, ngram)
-
-
-def format_ann(c, ngram):
-    return str(c) + format_query(ngram)
-
-
-def format_query(ngram):
-    return '.' + ''.join(map(_format_query, ngram))
-
-
-def _format_query(w):
-    if w is None:
-        return '0'
-    else:
-        return '1'
-
-
-def search(tree, ngram, n_out_max):
-    if tree:
-        ret = _search(tree, ngram)
-        if n_out_max < 0:
-            return ret
-        return itertools.islice(ret, n_out_max)
-    else:
-        return ()
-
-
-def _search(tree, ngram):
-    seen = set()
-    for ngram in fuzzy_queries(ngram):
-        if not all(w is None for w in ngram):
-            for w, c in candidates(tree, ngram):
-                if w not in seen:
-                    yield (w, c, ngram)
-                    seen.add(w)
-
-
-def fuzzy_queries(ngram):
-    for q in itertools.product(*[(w, None) for w in reversed(ngram)]):
-        yield tuple(reversed(q))
-
-
-def memoize_candidates(f):
-    table = {}
-
-    def memof(tree, ngram):
-        ngram = tuple(ngram)
-        if None in ngram:
-            if ngram in table:
-                logging.info('HIT!:\t{}\t{}'.format(len(table[ngram]), ngram))
-                return table[ngram]
-            else:
-                ret = tuple(f(tree, ngram))
-                logging.info('set:\t{}\t{}'.format(len(ret), ngram))
-                table[ngram] = ret
-                return ret
-        else:
-            ret = f(tree, ngram)
-            logging.info('input:\t{}\t{}'.format(len(ret), ngram))
-            return ret
-    return memof
-
-
-@memoize_candidates
-def candidates(tree, ngram):
-    return sorted(
-        count_candidates(_candidates(tree, optimize_query(ngram))),
-        key=second,
-        reverse=True
-    )
-
-
-def _candidates(tree, ngram):
-    return itertools.chain(
-        _candidates2(tree, ngram),
-        _candidates1(tree[1:], ngram)
-    )
-
-
-def _candidates2(tree, ngram):
-    cs_ws_children = tree[0]
-    if not cs_ws_children:
-        return ()
-    l = len(cs_ws_children[0])
-    if not ngram:
-        return zip(cs_ws_children[1:(1 + l)], cs_ws_children[0])
-
-    if len(cs_ws_children) < 1 + 2*l:
-        assert len(cs_ws_children) == 1 + l
-        return ()
-    assert len(cs_ws_children) == 1 + 2*l
-    w = ngram[0]
-    more = ngram[1:]
-    if w is None:
-        return itertools.chain.from_iterable(
-            _candidates(child, more)
-            for child
-            in cs_ws_children[(l + 1):]
-        )
-    try:
-        i = index(cs_ws_children, w, 1, 1 + l)
-    except ValueError:
-        return ()
-    return _candidates(cs_ws_children[i + l], more)
-
-
-def _candidates1(wss, ngram):
-    if not wss:
-        return ()
-    if not ngram:
-        return zip_with_1(wss[0])
-    if ngram[0] is None:
-        ngram_more = ngram[1:]
-        return itertools.chain.from_iterable(
-            match_tuple(ws, ngram_more)
-            for ws
-            in zip(*wss[1:])
-        )
-    try:
-        i = index(wss[0], ngram[0])
-    except ValueError:
-        return ()
-    return match_tuple([ws[i] for ws in wss[1:]], ngram[1:])
-
-
-def match_tuple(ws, ngram):
-    n = len(ngram)
-    if n < len(ws):
-        for w, q in zip(ws, ngram):
-            if (w != q) and (q is not None):
-                return ()
-        return ((ws[n], 1),)
-    else:
-        return ()
-
-
-def count_candidates(wcs):
-    d = {}
-    for w, c in wcs:
-        if w in d:
-            d[w] += c
-        else:
-            d[w] = c
-    return d.items()
-
-
-def zip_with_1(xs):
-    return zip(xs, (1 for _ in xs))
-
-
-def optimize_query(ngram):
-    i = 0
-    for w in ngram:
-        if w is None:
-            i += 1
-        else:
-            break
-    return ngram[i:]
-
-
-def index(xs, x, lo=0, hi=None):
-    if hi is None:
-        hi = len(xs)
-    i = bisect.bisect_left(xs, x, lo, hi)
-    if i < len(xs) and xs[i] == x:
-        return i
-    raise ValueError
-
-
-def make_dump(results, lock_pre):
+# def make_dump(results: Iterable[Tuple[str, str]], lock_pre: threading.Lock) -> Tuple[Callable[[], Any], threading.Lock, Callable[[], Any]]:
+def make_dump(results: Iterable[Tuple[str, str]], lock_pre: Any) -> Tuple[Callable[[], Any], Any, Callable[[], Any]]:
     stopper = [False]
 
-    def stop():
+    def stop() -> Any:
         stopper[0] = True
 
     lock_cur = threading.Lock()
     lock_cur.acquire()
 
-    def dump():
+    def dump() -> Any:
         lock_pre.acquire()
         for w, ann in results:
             if stopper[0]:
@@ -431,46 +171,292 @@ def make_dump(results, lock_pre):
     return stop, lock_cur, dump
 
 
-def type_code_of(n):
-    if n < 256:
-        return 'B'
-    elif n < 65536:
-        return 'I'
-    elif n < 4294967296:
-        return 'L'
+# -------- read data
+
+
+def load_db(
+        db: Dict[str, Any],
+        txt_files: Sequence[str],
+        n: int,
+        mtime: int,
+        db_file: str,
+) -> bool:
+    if load_cache(lambda c: db.update(c), db_file, mtime):
+        return True
+
+    db.update(make_db(read_and_split_all_txt(txt_files), n))
+
+    def save_db() -> Any:
+        os.makedirs(os.path.dirname(db_file), exist_ok=True)
+        with open(db_file, 'wb') as fh:
+            pickle.dump(db, fh)
+    threading.Thread(target=save_db).start()
+
+    return False
+
+
+def make_db(ws: List[str], n: int) -> Dict[str, Any]:
+    assert n > 1
+    sym_of_w, w_of_sym = make_code(ws)
+    syms = coding(ws, sym_of_w)
+    ngrams = list(each_cons(syms, n))
+    ngrams.sort()
+    tree = [
+        array.array(
+            type_code_of(len(w_of_sym)),
+            [ngram[i] for ngram in ngrams],
+        )
+        for i
+        in range(n)
+    ]
+    return dict(
+        tree=tree,
+        sym_of_w=sym_of_w,
+        w_of_sym=w_of_sym,
+    )
+
+
+def load_cache(f: Callable[[Any], Any], path: str, mtime: int) -> bool:
+    try:
+        mtime_cache = os.path.getmtime(path)
+    except:
+        mtime_cache = -(2**60)
+    if mtime_cache > mtime:
+        try:
+            with open(path, 'rb') as fh:
+                f(pickle.load(fh))
+            return True
+        except:
+            pass
+    return False
+
+
+# -------- output formatting
+
+
+def company_filter(wcns: Iterable[Tuple[str, int, Tuple[Optional[str], ...]]]) -> Iterable[Tuple[str, str]]:
+    for w, c, ngram in wcns:
+        yield w, format_ann(c, ngram)
+
+
+def format_ann(c: int, ngram: Tuple[Optional[str], ...]) -> str:
+    return str(c) + format_query(ngram)
+
+
+def format_query(ngram: Iterable[Optional[str]]) -> str:
+    return '.' + ''.join(map(_format_query, ngram))
+
+
+def _format_query(w: Optional[str]) -> str:
+    if w is None:
+        return '0'
     else:
+        return '1'
+
+
+# -------- search candidates
+
+
+def search(
+        db: Dict[str, Any],
+        ws: Tuple[str, ...],
+        n_out_max: int,
+        cache: Dict[Tuple[Optional[str], ...],
+                    Sequence[Tuple[str, int]]],
+        not_found: int,
+) -> Iterable[Tuple[str, int, Tuple[Optional[str], ...]]]:
+    if db:
+        ret = _search(db, ws, cache, not_found)
+        if n_out_max < 0:
+            return ret
+        return itertools.islice(ret, n_out_max)
+    else:
+        return ()
+
+
+def _search(
+        db: Dict[str, Any],
+        ws: Tuple[str, ...],
+        cache: Dict[Tuple[Optional[str], ...],
+                    Sequence[Tuple[str, int]]],
+        not_found: int,
+) -> Iterable[Tuple[str, int, Tuple[Optional[str], ...]]]:
+    seen = set() # type: Set[str]
+    sym_of_w = db['sym_of_w']
+    w_of_sym = db['w_of_sym']
+    tree = db['tree']
+    for ws in fuzzy_queries(ws):
+        if all(w is None for w in ws):
+            continue
+        if ws in cache:
+            logging.info('hit:\t{}\t{}'.format(len(cache[ws]), ws))
+            wcs = cache[ws]
+        else:
+            syms = encode(ws, sym_of_w, not_found)
+            if not_found in syms:
+                cache[ws] = ()
+                continue
+            wcs = [(w_of_sym[s], c) for s, c in candidates(tree, syms)]
+            cache[ws] = wcs
+            logging.info('set:\t{}\t{}'.format(len(wcs), ws))
+        for w, c in yield_without_dup(wcs, seen):
+            yield w, c, ws
+
+
+def yield_without_dup(wcs: Iterable[Tuple[T1, T2]], seen: Set[T1]) -> Iterator[Tuple[T1, T2]]:
+    for w, c in wcs:
+        if w not in seen:
+            yield w, c
+            seen.add(w)
+
+
+def candidates(tree: List[Sequence[int]], syms: Tuple[Optional[int], ...]) -> List[Tuple[int, int]]:
+    assert syms
+    assert len(tree) > len(syms)
+    return sorted(
+        count_candidates(zip_with_1(_candidates(tree, optimize_query(syms), 0, len(tree[0])))),
+        key=lambda x: x[1],
+        reverse=True
+    )
+
+
+def _candidates(tree: List[Sequence[int]], syms: Tuple[int, ...], lo: int, hi: int) -> Iterable[int]:
+    if syms:
+        s = syms[0]
+        if s is None:
+            return _candidates_seq(tree, syms, range(lo, hi))
+        i1, i2 = range_of(tree[0], s, lo, hi)
+        if i2 < i1:
+            return ()
+        return _candidates(tree[1:], syms[1:], i1, i2)
+    else:
+        return tree[0][lo:hi]
+
+
+def _candidates_seq(tree: List[Sequence[int]], syms: Tuple[int, ...], inds: Iterable[int]) -> Iterable[int]:
+    if syms:
+        s = syms[0]
+        if s is None:
+            return _candidates_seq(tree[1:], syms[1:], inds)
+        t0 = tree[0]
+        return _candidates_seq(tree[1:], syms[1:], (i for i in inds if t0[i] == s))
+    else:
+        t0 = tree[0]
+        return [t0[i] for i in inds]
+
+
+def range_of(xs: Sequence[T], y: T, lo: int, hi: int) -> Tuple[int, int]:
+    i1 = bisect.bisect_left(xs, y, lo, hi)
+    i2 = bisect.bisect_right(xs, y, i1, hi)
+    return i1, i2
+
+
+def count_candidates(wcs: Iterable[Tuple[int, int]]) -> Iterable[Tuple[int, int]]:
+    d = {} # type: Dict[int, int]
+    for w, c in wcs:
+        if w in d:
+            d[w] += c
+        else:
+            d[w] = c
+    return d.items()
+
+
+def optimize_query(ws: Tuple[Optional[T], ...]) -> Tuple[Optional[T], ...]:
+    i = 0
+    for w in ws:
+        if w is None:
+            i += 1
+        else:
+            break
+    return ws[i:]
+
+
+def zip_with_1(xs: Iterable[int]) -> Iterable[Tuple[int, int]]:
+    return zip(xs, (1 for _ in xs))
+
+
+def encode(ws: Iterable[Optional[str]], sym_of_w: Mapping[str, int], not_found: int) -> Tuple[Optional[int], ...]:
+    return tuple(_encode(w, sym_of_w, not_found) for w in ws)
+
+
+def _encode(w: Optional[str], sym_of_w: Mapping[str, int], not_found: int) -> Optional[int]:
+    if w is not None:
+        return sym_of_w.get(w, not_found)
+
+
+# -------- utilities
+
+
+def txt_files_of(data_dir: str) -> List[str]:
+    return [
+        os.path.join(data_dir, f)
+        for f
+        in os.listdir(data_dir)
+        if f.endswith('.txt')
+    ]
+
+
+def mtime_max_of(paths: Sequence[str]) -> int:
+    return max(os.path.getmtime(path) for path in paths)
+
+
+def read_and_split_all_txt(paths: Sequence[str]) -> List[str]:
+    words = [] # type: List[str]
+    for path in paths:
+        with open(path) as fh:
+            words.extend(w for w in fh.read().split())
+    return words
+
+
+def coding(xs: Sequence[K], code: Mapping[K, V]) -> List[V]:
+    return [code[x] for x in xs]
+
+
+def make_code(ws: Sequence[T]) -> Tuple[Dict[T, int],
+                                        List[T]]:
+    w_of_sym = sorted(set(ws))
+    sym_of_w = dict.fromkeys(w_of_sym)
+    for s, w in enumerate(w_of_sym):
+        sym_of_w[w] = s
+    return sym_of_w, w_of_sym
+
+
+def make_type_code_of() -> Callable[[int], str]:
+    type_codes = ('B', 'H', 'I', 'L')
+    base = 2**8
+    sizes = tuple(
+        base**array.array(t, [0]).itemsize
+        for t in type_codes
+    )
+
+    def type_code_of(n: int) -> str:
+        assert n > -1
+        for s, t in zip(sizes, type_codes):
+            if n < s:
+                return t
         return 'Q'
+    return type_code_of
 
 
-def first(x):
-    return x[0]
+type_code_of = make_type_code_of()
 
 
-def second(x):
-    return x[1]
+def fuzzy_queries(ws: Tuple[str, ...]) -> Iterable[Tuple[Optional[str], ...]]:
+    for q in itertools.product(
+            *[(w, None)
+              for w
+              in reversed(ws)]
+    ):
+        yield tuple(reversed(q))
 
 
-def each_cons(xs, n):
+def each_cons(xs: Sequence[T], n: int) -> Sequence[Tuple[T, ...]]:
     assert n >= 1
-    if isinstance(xs, collections.Iterator):
-        return _each_cons_iter(xs, n)
-    else:
-        return _each_cons(xs, n)
+    return _each_cons(xs, n)
 
 
-def _each_cons(xs, n):
+def _each_cons(xs: Sequence[T], n: int) -> List[Tuple[T, ...]]:
     return [tuple(xs[i:i+n]) for i in range(len(xs) - (n - 1))]
-
-
-def _each_cons_iter(xs, n):
-    ret = []
-    for _ in range(n):
-        ret.append(next(xs))
-    yield tuple(ret)
-    for x in xs:
-        ret = ret[1:]
-        ret.append(x)
-        yield tuple(ret)
 
 
 if __name__ == '__main__':

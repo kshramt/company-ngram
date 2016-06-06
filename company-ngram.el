@@ -16,12 +16,18 @@
 ;; (with-eval-after-load 'company-ngram
 ;;   ; ~/data/ngram/*.txt are used as data
 ;;   (setq company-ngram-data-dir "~/data/ngram")
-;;   ; company-ngram does not support python2
+;;   ; company-ngram supports python 3.3 or newer
 ;;   (setq company-ngram-python "/path/to/python3")
 ;;   (company-ngram-init)
 ;;   (add-to-list 'company-backends 'company-ngram-backend)
 ;;   ; or use `M-x turn-on-company-ngram' and
 ;;   ; `M-x turn-off-company-ngram' on individual buffers
+;;   ;
+;;   ; save the cache of candidates
+;;   (run-with-idle-timer 3600 t
+;;                        (lambda ()
+;;                          (company-ngram-command "save_cache\n")
+;;                          ))
 ;;   )
 ;; (require 'company-ngram nil t)
 ;;
@@ -218,6 +224,12 @@
     (company-ngram-plain-wait timeout)
     (company-ngram-get-plain)
     ))
+
+(defun company-ngram-command (command)
+  (with-local-quit
+    (process-send-string company-ngram-process command)
+    )
+  )
 
 
 (defun company-ngram-get-plain ()

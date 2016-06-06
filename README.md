@@ -32,12 +32,18 @@ Hence, even if your `*.txt` does not contain the word `Aki`, you still have chan
 (with-eval-after-load 'company-ngram
   ; ~/data/ngram/*.txt are used as data
   (setq company-ngram-data-dir "~/data/ngram")
-  ; company-ngram does not support python2
+  ; company-ngram supports python 3.3 or newer
   (setq company-ngram-python "/path/to/python3")
   (company-ngram-init)
   (add-to-list 'company-backends 'company-ngram-backend)
-  ; or use `M-x turn-on-company-ngram` and
-  ; `M-x turn-off-company-ngram` on individual buffers
+  ; or use `M-x turn-on-company-ngram' and
+  ; `M-x turn-off-company-ngram' on individual buffers
+  ;
+  ; save the cache of candidates
+  (run-with-idle-timer 3600 t
+                       (lambda ()
+                         (company-ngram-command "save_cache\n")
+                         ))
   )
 
 (require 'company-ngram nil t)
@@ -57,3 +63,16 @@ I am setting `company-idle-delay` as 0.5 s.
 ## License
 
 [The GNU General Public License version 3](http://www.gnu.org/licenses/).
+
+## ChangeLog
+
+### 0.7.0
+
+#### Breaking changes
+
+- Drop support for Python 3.0--3.2 to use the `typing` module.
+
+#### Improvements
+
+- Reduce runtime memory usage (1.8 GB -> 0.6 GB for 5-gram of 140 MB text data).
+- Improve loading time from text files (20 min -> 3 min for 5-gram of 140 MB text data).
