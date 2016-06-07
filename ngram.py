@@ -222,7 +222,7 @@ def make_db(ws: List[str], n: int) -> Dict[str, Any]:
     )
 
 
-def shrink(xs):
+def shrink(xs: Sequence[int]) -> Tuple[Sequence[int], Sequence[int]]:
     if not xs:
         return (), ()
     ss = []
@@ -336,7 +336,7 @@ def yield_without_dup(wcs: Iterable[Tuple[T1, T2]], seen: Set[T1]) -> Iterator[T
             seen.add(w)
 
 
-def candidates(tree: List[Sequence[int]], syms: Tuple[Optional[int], ...]) -> List[Tuple[int, int]]:
+def candidates(tree: List[Sequence[int]], syms: Tuple[Optional[int], ...]) -> Sequence[Tuple[int, int]]:
     assert syms
     assert len(tree) > len(syms)
 
@@ -378,7 +378,7 @@ def _candidates_seq(tree: List[Sequence[int]], syms: Tuple[int, ...], inds: Iter
         return [t0[i] for i in inds]
 
 
-def lo_hi_of(entries, i2s, x):
+def lo_hi_of(entries: Sequence[int], i2s: Sequence[int], x: int) -> Tuple[int, int]:
     # todo: use interpolation search
     i = bisect.bisect_left(entries, x)
     if entries[i] == x:
