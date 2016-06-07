@@ -56,8 +56,8 @@ def main(argv: List[str]) -> Any:
 
     cache_file = os.path.join(
         cache_dir,
-        'v@{}'.format(cache_format_version),
-        'n@{}'.format(n) + data_dir,
+        '{}'.format(cache_format_version),
+        '{}'.format(n) + data_dir,
         'cache.pickle',
     )
     cache = {} # type: Dict[Tuple[Optional[str], ...], Any]
@@ -76,8 +76,8 @@ def main(argv: List[str]) -> Any:
 
     db_file = os.path.join(
         cache_dir,
-        'v@{}'.format(cache_format_version),
-        'n@{}'.format(n) + data_dir,
+        '{}'.format(cache_format_version),
+        '{}'.format(n) + data_dir,
         'db.pickle',
     )
     db = {} # type: Dict[str, Any]
