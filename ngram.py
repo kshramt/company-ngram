@@ -201,19 +201,45 @@ def make_db(ws: List[str], n: int) -> Dict[str, Any]:
     syms = coding(ws, sym_of_w)
     ngrams = list(each_cons(syms, n))
     ngrams.sort()
-    tree = [
+    tree = list(range(n))
+    tree[0] = tuple(
+        array.array(type_code_of(xs[-1]), xs)
+        for xs
+        in shrink([ngram[0] for ngram in ngrams])
+    )
+    tree[1:] = [
         array.array(
             type_code_of(len(w_of_sym)),
             [ngram[i] for ngram in ngrams],
         )
         for i
-        in range(n)
+        in range(1, n)
     ]
     return dict(
         tree=tree,
         sym_of_w=sym_of_w,
         w_of_sym=w_of_sym,
     )
+
+
+def shrink(xs):
+    if not xs:
+        return (), ()
+    ss = []
+    ps = []
+    pre = xs[0]
+    p = -1
+    for x in xs:
+        if x == pre:
+            p += 1
+        else:
+            ss.append(pre)
+            ps.append(p)
+            pre = x
+            p += 1
+    ss.append(pre)
+    ps.append(p)
+    return ss, ps
 
 
 def load_cache(f: Callable[[Any], Any], path: str, mtime: int) -> bool:
@@ -313,8 +339,15 @@ def yield_without_dup(wcs: Iterable[Tuple[T1, T2]], seen: Set[T1]) -> Iterator[T
 def candidates(tree: List[Sequence[int]], syms: Tuple[Optional[int], ...]) -> List[Tuple[int, int]]:
     assert syms
     assert len(tree) > len(syms)
+
+    assert isinstance(tree[0], tuple)
+    syms = optimize_query(syms)
+    if not syms:
+        return ()
+    lo, hi = lo_hi_of(tree[0][0], tree[0][1], syms[0])
+
     return sorted(
-        count_candidates(zip_with_1(_candidates(tree, optimize_query(syms), 0, len(tree[0])))),
+        count_candidates(zip_with_1(_candidates(tree[1:], syms[1:], lo, hi))),
         key=lambda x: x[1],
         reverse=True
     )
@@ -343,6 +376,18 @@ def _candidates_seq(tree: List[Sequence[int]], syms: Tuple[int, ...], inds: Iter
     else:
         t0 = tree[0]
         return [t0[i] for i in inds]
+
+
+def lo_hi_of(entries, i2s, x):
+    # todo: use interpolation search
+    i = bisect.bisect_left(entries, x)
+    if entries[i] == x:
+        if i == 0:
+            return 0, i2s[i]
+        else:
+            return i2s[i - 1], i2s[i]
+    else:
+        return 1, 0
 
 
 def range_of(xs: Sequence[T], y: T, lo: int, hi: int) -> Tuple[int, int]:
