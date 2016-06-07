@@ -140,7 +140,7 @@ def setup_logging() -> Any:
             logging.handlers.RotatingFileHandler(
                 log_file,
                 maxBytes=10000000,
-                backupCount=2,
+                backupCount=10,
             ),
         ),
         format='%(asctime)s\t%(levelname)s\t%(message)s',
