@@ -375,7 +375,7 @@ def _candidates_seq(tree: List[Sequence[int]], syms: Tuple[int, ...], inds: Iter
         return _candidates_seq(tree[1:], syms[1:], (i for i in inds if t0[i] == s))
     else:
         t0 = tree[0]
-        return [t0[i] for i in inds]
+        return (t0[i] for i in inds)
 
 
 def lo_hi_of(entries: Sequence[int], i2s: Sequence[int], x: int) -> Tuple[int, int]:
@@ -416,8 +416,11 @@ def optimize_query(ws: Tuple[Optional[T], ...]) -> Tuple[Optional[T], ...]:
     return ws[i:]
 
 
+ones = itertools.repeat(1)
+
+
 def zip_with_1(xs: Iterable[int]) -> Iterable[Tuple[int, int]]:
-    return zip(xs, (1 for _ in xs))
+    return zip(xs, ones)
 
 
 def encode(ws: Iterable[Optional[str]], sym_of_w: Mapping[str, int], not_found: int) -> Tuple[Optional[int], ...]:
