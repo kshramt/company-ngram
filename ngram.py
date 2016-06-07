@@ -322,7 +322,7 @@ def _search(
             if not_found in syms:
                 cache[ws] = ()
                 continue
-            wcs = [(w_of_sym[s], c) for s, c in candidates(tree, syms)]
+            wcs = tuple((w_of_sym[s], c) for s, c in candidates(tree, syms))
             cache[ws] = wcs
             logging.info('set:\t{}\t{}'.format(len(wcs), ws))
         for w, c in yield_without_dup(wcs, seen):
