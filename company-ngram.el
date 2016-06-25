@@ -213,7 +213,7 @@
 (defun company-ngram--query (process n-out-max timeout words)
   (with-current-buffer (process-buffer process)
     (with-local-quit
-      (company-ngram-plain-wait timeout)
+      (company-ngram-plain-wait (* 2 timeout))
       (erase-buffer)
       (process-send-string process
                            (concat (format "%d\t%e\t" n-out-max timeout)
@@ -221,7 +221,7 @@
                                    "\n"))
       (accept-process-output process)
       )
-    (company-ngram-plain-wait timeout)
+    (company-ngram-plain-wait (* 2 timeout))
     (company-ngram-get-plain)
     ))
 
