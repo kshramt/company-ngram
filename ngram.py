@@ -10,27 +10,7 @@ import os
 import pickle
 import sys
 import threading
-from typing import (
-    Any,
-    Callable,
-    Dict,
-    Iterable,
-    Iterator,
-    List,
-    Mapping,
-    Optional,
-    Sequence,
-    Set,
-    Tuple,
-    TypeVar,
-)
 
-
-T = TypeVar('T')
-T1 = TypeVar('T1')
-T2 = TypeVar('T2')
-K = TypeVar('K')
-V = TypeVar('V')
 
 cache_format_version = 5
 cache_dir = os.path.join(os.environ['HOME'], '.cache', 'company-ngram')
@@ -40,7 +20,7 @@ log_file = os.path.join(cache_dir, 'ngram.py.log')
 # -------- main
 
 
-def main(argv: List[str]) -> Any:
+def main(argv):
     setup_logging()
 
     if len(argv) != 3:
@@ -66,7 +46,7 @@ def main(argv: List[str]) -> Any:
         mtime_max,
     )
 
-    def save_cache() -> Any:
+    def save_cache():
         os.makedirs(os.path.dirname(cache_file), exist_ok=True)
         with open(cache_file, 'wb') as fh:
             pickle.dump(cache, fh)
@@ -81,7 +61,7 @@ def main(argv: List[str]) -> Any:
     )
     db = {} # type: Dict[str, Any]
 
-    def lazy_load_db() -> Any:
+    def lazy_load_db():
         load_db(db, txt_files, n, mtime_max, db_file)
     threading.Thread(target=lazy_load_db).start()
 
@@ -116,7 +96,7 @@ def main(argv: List[str]) -> Any:
         dump()
 
 
-def usage_and_exit(s: int=1) -> Any:
+def usage_and_exit(s=1):
     print(
         """
         echo <query> | {} <n> <data_dir>
@@ -131,7 +111,7 @@ def usage_and_exit(s: int=1) -> Any:
     exit(s)
 
 
-def setup_logging() -> Any:
+def setup_logging():
     os.makedirs(os.path.dirname(log_file), exist_ok=True)
     logging.basicConfig(
         handlers=(
@@ -146,17 +126,16 @@ def setup_logging() -> Any:
     )
 
 
-# def make_dump(results: Iterable[Tuple[str, str]]) -> Tuple[Callable[[], Any], Callable[[], Any]]:
-def make_dump(results: Iterable[Tuple[str, str]]) -> Tuple[Callable[[], Any], Callable[[], Any]]:
+def make_dump(results):
     stopper = [False]
     dumped = [False]
 
-    def stop() -> Any:
+    def stop():
         stopper[0] = True
         if not dumped[0]:
             end_of_output()
 
-    def dump() -> Any:
+    def dump():
         stopped_by_stopper = False
         for w, ann in results:
             stopped_by_stopper = stopper[0]
@@ -178,18 +157,18 @@ def end_of_output():
 
 
 def load_db(
-        db: Dict[str, Any],
-        txt_files: Sequence[str],
-        n: int,
-        mtime: int,
-        db_file: str,
-) -> bool:
+        db,
+        txt_files,
+        n,
+        mtime,
+        db_file,
+):
     if load_cache(lambda c: db.update(c), db_file, mtime):
         return True
 
     db.update(make_db(read_and_split_all_txt(txt_files), n))
 
-    def save_db() -> Any:
+    def save_db():
         os.makedirs(os.path.dirname(db_file), exist_ok=True)
         with open(db_file, 'wb') as fh:
             pickle.dump(db, fh)
@@ -198,7 +177,7 @@ def load_db(
     return False
 
 
-def make_db(ws: List[str], n: int) -> Dict[str, Any]:
+def make_db(ws, n):
     assert n > 1
     sym_of_w, w_of_sym = make_code(ws)
     syms = coding(ws, sym_of_w)
@@ -225,7 +204,7 @@ def make_db(ws: List[str], n: int) -> Dict[str, Any]:
     )
 
 
-def shrink(xs: Sequence[int]) -> Tuple[Sequence[int], Sequence[int]]:
+def shrink(xs):
     if not xs:
         return (), ()
     ss = []
@@ -245,7 +224,7 @@ def shrink(xs: Sequence[int]) -> Tuple[Sequence[int], Sequence[int]]:
     return ss, ps
 
 
-def load_cache(f: Callable[[Any], Any], path: str, mtime: int) -> bool:
+def load_cache(f, path, mtime):
     try:
         mtime_cache = os.path.getmtime(path)
     except:
@@ -263,20 +242,20 @@ def load_cache(f: Callable[[Any], Any], path: str, mtime: int) -> bool:
 # -------- output formatting
 
 
-def company_filter(wcns: Iterable[Tuple[str, int, Tuple[Optional[str], ...]]]) -> Iterable[Tuple[str, str]]:
+def company_filter(wcns):
     for w, c, ngram in wcns:
         yield w, format_ann(c, ngram)
 
 
-def format_ann(c: int, ngram: Tuple[Optional[str], ...]) -> str:
+def format_ann(c, ngram):
     return str(c) + format_query(ngram)
 
 
-def format_query(ngram: Iterable[Optional[str]]) -> str:
+def format_query(ngram):
     return '.' + ''.join(map(_format_query, ngram))
 
 
-def _format_query(w: Optional[str]) -> str:
+def _format_query(w):
     if w is None:
         return '0'
     else:
@@ -287,13 +266,12 @@ def _format_query(w: Optional[str]) -> str:
 
 
 def search(
-        db: Dict[str, Any],
-        ws: Tuple[str, ...],
-        n_out_max: int,
-        cache: Dict[Tuple[Optional[str], ...],
-                    Sequence[Tuple[str, int]]],
-        not_found: int,
-) -> Iterable[Tuple[str, int, Tuple[Optional[str], ...]]]:
+        db,
+        ws,
+        n_out_max,
+        cache,
+        not_found,
+):
     if db:
         ret = _search(db, ws, cache, not_found)
         if n_out_max < 0:
@@ -304,12 +282,11 @@ def search(
 
 
 def _search(
-        db: Dict[str, Any],
-        ws: Tuple[str, ...],
-        cache: Dict[Tuple[Optional[str], ...],
-                    Sequence[Tuple[str, int]]],
-        not_found: int,
-) -> Iterable[Tuple[str, int, Tuple[Optional[str], ...]]]:
+        db,
+        ws,
+        cache,
+        not_found,
+):
     seen = set() # type: Set[str]
     sym_of_w = db['sym_of_w']
     w_of_sym = db['w_of_sym']
@@ -332,14 +309,14 @@ def _search(
             yield w, c, ws
 
 
-def yield_without_dup(wcs: Iterable[Tuple[T1, T2]], seen: Set[T1]) -> Iterator[Tuple[T1, T2]]:
+def yield_without_dup(wcs, seen):
     for w, c in wcs:
         if w not in seen:
             yield w, c
             seen.add(w)
 
 
-def candidates(tree: List[Sequence[int]], syms: Tuple[Optional[int], ...]) -> Sequence[Tuple[int, int]]:
+def candidates(tree, syms):
     assert syms
     assert len(tree) > len(syms)
 
@@ -356,7 +333,7 @@ def candidates(tree: List[Sequence[int]], syms: Tuple[Optional[int], ...]) -> Se
     )
 
 
-def _candidates(tree: List[Sequence[int]], syms: Tuple[int, ...], lo: int, hi: int) -> Iterable[int]:
+def _candidates(tree, syms, lo, hi):
     if syms:
         s = syms[0]
         if s is None:
@@ -369,7 +346,7 @@ def _candidates(tree: List[Sequence[int]], syms: Tuple[int, ...], lo: int, hi: i
         return tree[0][lo:hi]
 
 
-def _candidates_seq(tree: List[Sequence[int]], syms: Tuple[int, ...], inds: Iterable[int]) -> Iterable[int]:
+def _candidates_seq(tree, syms, inds):
     if syms:
         s = syms[0]
         if s is None:
@@ -381,7 +358,7 @@ def _candidates_seq(tree: List[Sequence[int]], syms: Tuple[int, ...], inds: Iter
         return (t0[i] for i in inds)
 
 
-def lo_hi_of(entries: Sequence[int], i2s: Sequence[int], x: int) -> Tuple[int, int]:
+def lo_hi_of(entries, i2s, x):
     # todo: use interpolation search
     i = bisect.bisect_left(entries, x)
     if entries[i] == x:
@@ -393,13 +370,13 @@ def lo_hi_of(entries: Sequence[int], i2s: Sequence[int], x: int) -> Tuple[int, i
         return 1, 0
 
 
-def range_of(xs: Sequence[T], y: T, lo: int, hi: int) -> Tuple[int, int]:
+def range_of(xs, y, lo, hi):
     i1 = bisect.bisect_left(xs, y, lo, hi)
     i2 = bisect.bisect_right(xs, y, i1, hi)
     return i1, i2
 
 
-def count_candidates(wcs: Iterable[Tuple[int, int]]) -> Iterable[Tuple[int, int]]:
+def count_candidates(wcs):
     d = {} # type: Dict[int, int]
     for w, c in wcs:
         if w in d:
@@ -409,7 +386,7 @@ def count_candidates(wcs: Iterable[Tuple[int, int]]) -> Iterable[Tuple[int, int]
     return d.items()
 
 
-def optimize_query(ws: Tuple[Optional[T], ...]) -> Tuple[Optional[T], ...]:
+def optimize_query(ws):
     i = 0
     for w in ws:
         if w is None:
@@ -422,15 +399,15 @@ def optimize_query(ws: Tuple[Optional[T], ...]) -> Tuple[Optional[T], ...]:
 ones = itertools.repeat(1)
 
 
-def zip_with_1(xs: Iterable[int]) -> Iterable[Tuple[int, int]]:
+def zip_with_1(xs):
     return zip(xs, ones)
 
 
-def encode(ws: Iterable[Optional[str]], sym_of_w: Mapping[str, int], not_found: int) -> Tuple[Optional[int], ...]:
+def encode(ws, sym_of_w, not_found):
     return tuple(_encode(w, sym_of_w, not_found) for w in ws)
 
 
-def _encode(w: Optional[str], sym_of_w: Mapping[str, int], not_found: int) -> Optional[int]:
+def _encode(w, sym_of_w, not_found):
     if w is not None:
         return sym_of_w.get(w, not_found)
 
@@ -438,7 +415,7 @@ def _encode(w: Optional[str], sym_of_w: Mapping[str, int], not_found: int) -> Op
 # -------- utilities
 
 
-def txt_files_of(data_dir: str) -> List[str]:
+def txt_files_of(data_dir):
     return [
         os.path.join(data_dir, f)
         for f
@@ -447,11 +424,11 @@ def txt_files_of(data_dir: str) -> List[str]:
     ]
 
 
-def mtime_max_of(paths: Sequence[str]) -> int:
+def mtime_max_of(paths):
     return max(os.path.getmtime(path) for path in paths)
 
 
-def read_and_split_all_txt(paths: Sequence[str]) -> List[str]:
+def read_and_split_all_txt(paths):
     words = [] # type: List[str]
     for path in paths:
         with open(path) as fh:
@@ -459,12 +436,11 @@ def read_and_split_all_txt(paths: Sequence[str]) -> List[str]:
     return words
 
 
-def coding(xs: Sequence[K], code: Mapping[K, V]) -> List[V]:
+def coding(xs, code):
     return [code[x] for x in xs]
 
 
-def make_code(ws: Sequence[T]) -> Tuple[Dict[T, int],
-                                        List[T]]:
+def make_code(ws):
     w_of_sym = sorted(set(ws))
     sym_of_w = dict.fromkeys(w_of_sym)
     for s, w in enumerate(w_of_sym):
@@ -472,7 +448,7 @@ def make_code(ws: Sequence[T]) -> Tuple[Dict[T, int],
     return sym_of_w, w_of_sym
 
 
-def make_type_code_of() -> Callable[[int], str]:
+def make_type_code_of():
     type_codes = ('B', 'H', 'I', 'L')
     base = 2**8
     sizes = tuple(
@@ -480,7 +456,7 @@ def make_type_code_of() -> Callable[[int], str]:
         for t in type_codes
     )
 
-    def type_code_of(n: int) -> str:
+    def type_code_of(n):
         assert n > -1
         for s, t in zip(sizes, type_codes):
             if n < s:
@@ -492,7 +468,7 @@ def make_type_code_of() -> Callable[[int], str]:
 type_code_of = make_type_code_of()
 
 
-def fuzzy_queries(ws: Tuple[str, ...]) -> Iterable[Tuple[Optional[str], ...]]:
+def fuzzy_queries(ws):
     for q in itertools.product(
             *[(w, None)
               for w
@@ -501,12 +477,12 @@ def fuzzy_queries(ws: Tuple[str, ...]) -> Iterable[Tuple[Optional[str], ...]]:
         yield tuple(reversed(q))
 
 
-def each_cons(xs: Sequence[T], n: int) -> Sequence[Tuple[T, ...]]:
+def each_cons(xs, n):
     assert n >= 1
     return _each_cons(xs, n)
 
 
-def _each_cons(xs: Sequence[T], n: int) -> List[Tuple[T, ...]]:
+def _each_cons(xs, n):
     return [tuple(xs[i:i+n]) for i in range(len(xs) - (n - 1))]
 
 

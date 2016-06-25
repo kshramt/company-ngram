@@ -16,7 +16,7 @@
 ;; (with-eval-after-load 'company-ngram
 ;;   ; ~/data/ngram/*.txt are used as data
 ;;   (setq company-ngram-data-dir "~/data/ngram")
-;;   ; company-ngram supports python 3.3 or newer
+;;   ; company-ngram supports python 3 or newer
 ;;   (setq company-ngram-python "/path/to/python3")
 ;;   (company-ngram-init)
 ;;   (add-to-list 'company-backends 'company-ngram-backend)
