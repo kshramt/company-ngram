@@ -234,8 +234,9 @@
 
 
 (defun company-ngram-get-plain ()
-  (mapcar (lambda (l) (split-string l "\t"))
-          (split-string (buffer-string) "\n" t)))
+  (delete-if-not 'cdr
+                 (mapcar (lambda (l) (split-string l "\t" t))
+                         (split-string (buffer-string) "\n" t))))
 
 
 (defun company-ngram-plain-wait (l)
