@@ -151,24 +151,34 @@ def setup_logging() -> Any:
 # def make_dump(results: Iterable[Tuple[str, str]], lock_pre: threading.Lock) -> Tuple[Callable[[], Any], threading.Lock, Callable[[], Any]]:
 def make_dump(results: Iterable[Tuple[str, str]], lock_pre: Any) -> Tuple[Callable[[], Any], Any, Callable[[], Any]]:
     stopper = [False]
+    dumped = [False]
 
     def stop() -> Any:
         stopper[0] = True
+        if not dumped[0]:
+            end_of_output()
 
     lock_cur = threading.Lock()
     lock_cur.acquire()
 
     def dump() -> Any:
         lock_pre.acquire()
+        stopped_by_stopper = False
         for w, ann in results:
-            if stopper[0]:
+            stopped_by_stopper = stopper[0]
+            if stopped_by_stopper:
                 break
             print(w, ann, sep='\t')
-        print()
-        print()
-        sys.stdout.flush()
+        dumped[0] = True
+        if not stopped_by_stopper:
+            end_of_output()
         lock_cur.release()
     return stop, lock_cur, dump
+
+
+def end_of_output():
+    print('\n')
+    sys.stdout.flush()
 
 
 # -------- read data
