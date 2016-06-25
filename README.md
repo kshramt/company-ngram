@@ -42,7 +42,7 @@ Hence, even if your `*.txt` does not contain the word `Aki`, you still have chan
   ; save the cache of candidates
   (run-with-idle-timer 3600 t
                        (lambda ()
-                         (company-ngram-command "save_cache\n")
+                         (company-ngram-command "save_cache")
                          ))
   )
 

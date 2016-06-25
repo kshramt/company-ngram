@@ -72,8 +72,10 @@ def main(argv):
         words = l.split()
         if not words:
             exit()
-        if words[0] == 'save_cache':
-            save_cache()
+        if words[0] == 'command':
+            if len(words) > 1:
+                if words[1] == 'save_cache':
+                    save_cache()
             continue
         try:
             n_out_max = int(words[0])

@@ -26,7 +26,7 @@
 ;;   ; save the cache of candidates
 ;;   (run-with-idle-timer 3600 t
 ;;                        (lambda ()
-;;                          (company-ngram-command "save_cache\n")
+;;                          (company-ngram-command "save_cache")
 ;;                          ))
 ;;   )
 ;; (require 'company-ngram nil t)
@@ -227,7 +227,8 @@
 
 (defun company-ngram-command (command)
   (with-local-quit
-    (process-send-string company-ngram-process command)
+    (process-send-string company-ngram-process
+                         (concat "command " command "\n"))
     )
   )
 
