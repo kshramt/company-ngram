@@ -58,7 +58,7 @@ wget --directory-prefix ~/data/ngram    https://www.rfc-editor.org/rfc/rfc{5661,
 ## Tips
 
 This backend may not work nicely if `company-idle-delay` is too small.
-I am setting `company-idle-delay` as 0.5 s.
+I am setting `company-idle-delay` as 0.2 s.
 
 ## License
 

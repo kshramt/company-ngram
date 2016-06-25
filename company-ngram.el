@@ -73,7 +73,7 @@
   :type 'float
   :group 'company-ngram
   )
-(defcustom company-ngram-timeout 0.5
+(defcustom company-ngram-timeout 0.2
   "Timeout to wait for output from the server"
   :type 'float
   :group 'company-ngram
