@@ -163,7 +163,7 @@ def make_dump(results: Iterable[Tuple[str, str]], lock_pre: Any) -> Tuple[Callab
         for w, ann in results:
             if stopper[0]:
                 break
-            print(w + '\t' + ann)
+            print(w, ann, sep='\t')
         print()
         print()
         sys.stdout.flush()
