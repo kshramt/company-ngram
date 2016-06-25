@@ -29,7 +29,6 @@ from typing import (
 T = TypeVar('T')
 T1 = TypeVar('T1')
 T2 = TypeVar('T2')
-threadingLock = TypeVar('threadingLock')
 K = TypeVar('K')
 V = TypeVar('V')
 
@@ -87,7 +86,6 @@ def main(argv: List[str]) -> Any:
     threading.Thread(target=lazy_load_db).start()
 
     stop = lambda: None
-    lock = threading.Lock()
     not_found = -1
     for l in sys.stdin:
         stop()
@@ -112,10 +110,10 @@ def main(argv: List[str]) -> Any:
             cache,
             not_found,
         ))
-        stop, lock, dump = make_dump(results, lock)
-        threading.Thread(target=dump).start()
+        stop, dump = make_dump(results)
         if timeout >= 0:
             threading.Timer(timeout, stop).start()
+        dump()
 
 
 def usage_and_exit(s: int=1) -> Any:
@@ -148,8 +146,8 @@ def setup_logging() -> Any:
     )
 
 
-# def make_dump(results: Iterable[Tuple[str, str]], lock_pre: threading.Lock) -> Tuple[Callable[[], Any], threading.Lock, Callable[[], Any]]:
-def make_dump(results: Iterable[Tuple[str, str]], lock_pre: Any) -> Tuple[Callable[[], Any], Any, Callable[[], Any]]:
+# def make_dump(results: Iterable[Tuple[str, str]]) -> Tuple[Callable[[], Any], Callable[[], Any]]:
+def make_dump(results: Iterable[Tuple[str, str]]) -> Tuple[Callable[[], Any], Callable[[], Any]]:
     stopper = [False]
     dumped = [False]
 
@@ -158,11 +156,7 @@ def make_dump(results: Iterable[Tuple[str, str]], lock_pre: Any) -> Tuple[Callab
         if not dumped[0]:
             end_of_output()
 
-    lock_cur = threading.Lock()
-    lock_cur.acquire()
-
     def dump() -> Any:
-        lock_pre.acquire()
         stopped_by_stopper = False
         for w, ann in results:
             stopped_by_stopper = stopper[0]
@@ -172,8 +166,7 @@ def make_dump(results: Iterable[Tuple[str, str]], lock_pre: Any) -> Tuple[Callab
         dumped[0] = True
         if not stopped_by_stopper:
             end_of_output()
-        lock_cur.release()
-    return stop, lock_cur, dump
+    return stop, dump
 
 
 def end_of_output():
