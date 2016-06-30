@@ -135,26 +135,18 @@
            pre
            (if (equal words company-ngram-prev-words)
                company-ngram-candidates
-             (progn
-               (setq company-ngram-candidates
-                     (mapcar
-                      (lambda (c)
-                        (let ((s (car c)))
-                          (put-text-property
-                           0 1 :ann
-                           (cadr c) s)
-                          s))
-                      (company-ngram-query words)))
-               (setq company-ngram-prev-words words)
-               (mapcar
-                (lambda (w)
-                  (let ((sp " "))
-                    (put-text-property
-                     0 1 :ann
-                     (get-text-property 0 :ann w) sp)
-                    (concat sp w)))
-                company-ngram-candidates)
-               ))))
+             (setq company-ngram-prev-words words)
+             (setq company-ngram-candidates
+                   (mapcar
+                    (lambda (c)
+                      (let ((w (concat " " (car c))))
+                        (put-text-property
+                         0 1 :ann
+                         (cadr c)
+                         w)
+                        w))
+                    (company-ngram-query words)))
+             company-ngram-candidates)))
          )
     (when candidates
       (put-text-property 0 1 :candidates candidates pre)
