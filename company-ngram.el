@@ -85,8 +85,8 @@
   )
 
 
-(defvar company-ngram-candidates nil)
-(defvar company-ngram-prev-words nil)
+(defvar company-ngram--candidates nil)
+(defvar company-ngram--prev-words nil)
 
 
 ;;;###autoload
@@ -130,27 +130,28 @@
          (pre (if is-suffix-space
                   " "
                 (car (last l))))
-         (candidates
-          (all-completions
-           pre
-           (if (equal words company-ngram-prev-words)
-               company-ngram-candidates
-             (setq company-ngram-prev-words words)
-             (setq company-ngram-candidates
-                   (mapcar
-                    (lambda (c)
+         )
+    (unless (equal words company-ngram--prev-words)
+      (setq company-ngram--candidates
+            (mapcar (lambda (c)
                       (let ((w (concat " " (car c))))
                         (put-text-property
-                         0 1 :ann
+                         0 2 :ann
                          (cadr c)
                          w)
                         w))
                     (company-ngram-query words)))
-             company-ngram-candidates)))
-         )
-    (when candidates
-      (put-text-property 0 1 :candidates candidates pre)
-      (cons pre t)))
+      (setq company-ngram--prev-words words))
+    (let ((candidates (all-completions
+                       pre
+                       (if is-suffix-space
+                           company-ngram--candidates
+                         (mapcar (lambda (w)
+                                   (substring w 1))
+                                 company-ngram--candidates)))))
+      (when candidates
+        (put-text-property 0 1 :candidates candidates pre)
+        (cons pre t))))
   )
 
 
