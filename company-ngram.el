@@ -19,7 +19,7 @@
 ;;   ; company-ngram supports python 3 or newer
 ;;   (setq company-ngram-python "/path/to/python3")
 ;;   (company-ngram-init)
-;;   (add-to-list 'company-backends 'company-ngram-backend)
+;;   (cons 'company-ngram-backend company-backends)
 ;;   ; or use `M-x turn-on-company-ngram' and
 ;;   ; `M-x turn-off-company-ngram' on individual buffers
 ;;   ;
