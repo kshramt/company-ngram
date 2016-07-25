@@ -361,13 +361,19 @@ def _candidates_seq(tree, syms, inds):
 
 
 def lo_hi_of(entries, i2s, x):
+    """
+    - `lo`: inclusive
+    - `hi`: exclusive
+
+    Use as `e[lo:hi]`.
+    """
     # todo: use interpolation search
     i = bisect.bisect_left(entries, x)
     if entries[i] == x:
         if i == 0:
-            return 0, i2s[i]
+            return 0, i2s[i] + 1
         else:
-            return i2s[i - 1], i2s[i]
+            return i2s[i - 1] + 1, i2s[i] + 1
     else:
         return 1, 0
 
