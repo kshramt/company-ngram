@@ -130,23 +130,16 @@ def setup_logging():
 
 def make_dump(results):
     stopper = [False]
-    dumped = [False]
 
     def stop():
         stopper[0] = True
-        if not dumped[0]:
-            end_of_output()
 
     def dump():
-        stopped_by_stopper = False
         for w, ann in results:
-            stopped_by_stopper = stopper[0]
-            if stopped_by_stopper:
+            if stopper[0]:
                 break
             print(w, ann, sep='\t')
-        dumped[0] = True
-        if not stopped_by_stopper:
-            end_of_output()
+        end_of_output()
     return stop, dump
 
 
