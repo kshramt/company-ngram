@@ -39,7 +39,7 @@ def main(argv):
         '{}'.format(n) + data_dir,
         'cache.pickle',
     )
-    cache = {} # type: Dict[Tuple[Optional[str], ...], Any]
+    cache = {}
     load_cache(
         lambda c: cache.update(c),
         cache_file,
@@ -59,7 +59,7 @@ def main(argv):
         '{}'.format(n) + data_dir,
         'db.pickle',
     )
-    db = {} # type: Dict[str, Any]
+    db = {}
 
     def lazy_load_db():
         load_db(db, txt_files, n, mtime_max, db_file)
@@ -289,7 +289,7 @@ def _search(
         cache,
         not_found,
 ):
-    seen = set() # type: Set[str]
+    seen = set()
     sym_of_w = db['sym_of_w']
     w_of_sym = db['w_of_sym']
     tree = db['tree']
@@ -385,7 +385,7 @@ def range_of(xs, y, lo, hi):
 
 
 def count_candidates(wcs):
-    d = {} # type: Dict[int, int]
+    d = {}
     for w, c in wcs:
         if w in d:
             d[w] += c
@@ -437,7 +437,7 @@ def mtime_max_of(paths):
 
 
 def read_and_split_all_txt(paths):
-    words = [] # type: List[str]
+    words = []
     for path in paths:
         with open(path) as fh:
             words.extend(w for w in fh.read().split())
