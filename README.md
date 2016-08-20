@@ -33,7 +33,7 @@ Hence, even if your `*.txt` does not contain the word `Aki`, you still have chan
   ; ~/data/ngram/*.txt are used as data
   (setq company-ngram-data-dir "~/data/ngram")
   ; company-ngram supports python 3 or newer
-  (setq company-ngram-python "/path/to/python3")
+  (setq company-ngram-python "python3")
   (company-ngram-init)
   (cons 'company-ngram-backend company-backends)
   ; or use `M-x turn-on-company-ngram' and
