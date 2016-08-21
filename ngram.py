@@ -322,7 +322,7 @@ def candidates(tree, syms):
     lo, hi = lo_hi_of(tree[0][0], tree[0][1], syms[0])
 
     return sorted(
-        count_candidates(zip_with_1(_candidates(tree[1:], syms[1:], lo, hi))),
+        count_candidates(_candidates(tree[1:], syms[1:], lo, hi)),
         key=lambda x: x[1],
         reverse=True
     )
@@ -377,13 +377,13 @@ def range_of(xs, y, lo, hi):
     return i1, i2
 
 
-def count_candidates(wcs):
+def count_candidates(ws):
     d = {}
-    for w, c in wcs:
+    for w in ws:
         if w in d:
-            d[w] += c
+            d[w] += 1
         else:
-            d[w] = c
+            d[w] = 1
     return d.items()
 
 
@@ -395,13 +395,6 @@ def optimize_query(ws):
         else:
             break
     return ws[i:]
-
-
-ones = itertools.repeat(1)
-
-
-def zip_with_1(xs):
-    return zip(xs, ones)
 
 
 def encode(ws, sym_of_w, not_found):
