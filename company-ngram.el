@@ -227,16 +227,16 @@
 
 
 (defun company-ngram-get-plain ()
-  (delete-if-not 'cdr
-                 (mapcar (lambda (l) (split-string l "\t" t))
-                         (split-string (buffer-string) "\n" t))))
+  (cl-delete-if-not 'cdr
+                    (mapcar (lambda (l) (split-string l "\t" t))
+                            (split-string (buffer-string) "\n" t))))
 
 
 (defun company-ngram-plain-wait (l)
   (let ((i (1+ (ceiling (/ l company-ngram-sleep-for)))))
     (while (and (not (company-ngram-plain-ok-p)) (> i 0))
       (sleep-for company-ngram-sleep-for)
-      (decf i))))
+      (cl-decf i))))
 
 
 (defun company-ngram-plain-ok-p ()
