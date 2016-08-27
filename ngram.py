@@ -79,11 +79,11 @@ def main(argv):
             continue
         try:
             n_out_max = int(words[0])
-        except:
+        except Exception:
             exit()
         try:
             timeout = float(words[1])
-        except:
+        except Exception:
             exit()
         results = company_filter(search(
             db,
@@ -222,14 +222,14 @@ def shrink(xs):
 def load_cache(f, path, mtime):
     try:
         mtime_cache = os.path.getmtime(path)
-    except:
+    except Exception:
         mtime_cache = -(2**60)
     if mtime_cache > mtime:
         try:
             with open(path, 'rb') as fh:
                 f(pickle.load(fh))
             return True
-        except:
+        except Exception:
             pass
     return False
 
