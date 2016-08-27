@@ -47,10 +47,13 @@ def main(argv):
     )
 
     def save_cache():
-        os.makedirs(os.path.dirname(cache_file), exist_ok=True)
-        with open(cache_file, 'wb') as fh:
-            pickle.dump(cache, fh)
-        logging.info('save_cache:\t{}'.format(cache_file))
+        try:
+            os.makedirs(os.path.dirname(cache_file), exist_ok=True)
+            with open(cache_file, 'wb') as fh:
+                pickle.dump(cache, fh)
+            logging.info('save_cache:\t{}'.format(cache_file))
+        except Exception:
+            pass
     atexit.register(save_cache)
 
     db_file = os.path.join(
@@ -164,9 +167,12 @@ def load_db(
     db.update(make_db(read_and_split_all_txt(txt_files), n))
 
     def save_db():
-        os.makedirs(os.path.dirname(db_file), exist_ok=True)
-        with open(db_file, 'wb') as fh:
-            pickle.dump(db, fh)
+        try:
+            os.makedirs(os.path.dirname(db_file), exist_ok=True)
+            with open(db_file, 'wb') as fh:
+                pickle.dump(db, fh)
+        except Exception:
+            pass
     threading.Thread(target=save_db).start()
 
     return False
@@ -410,23 +416,36 @@ def _encode(w, sym_of_w, not_found):
 
 
 def txt_files_of(data_dir):
-    return [
-        os.path.join(data_dir, f)
-        for f
-        in os.listdir(data_dir)
-        if f.endswith('.txt')
-    ]
+    try:
+        return [
+            os.path.join(data_dir, f)
+            for f
+            in os.listdir(data_dir)
+            if f.endswith('.txt')
+        ]
+    except Exception:
+        return []
 
 
 def mtime_max_of(paths):
-    return max(os.path.getmtime(path) for path in paths)
+    return max(_mtime(path) for path in paths)
+
+
+def _mtime(path):
+    try:
+        return os.path.getmtime(path)
+    except Exception:
+        return 2**60
 
 
 def read_and_split_all_txt(paths):
     words = []
     for path in paths:
-        with open(path) as fh:
-            words.extend(w for w in fh.read().split())
+        try:
+            with open(path) as fh:
+                words.extend(w for w in fh.read().split())
+        except Exception:
+            pass
     return words
 
 
