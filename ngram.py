@@ -12,7 +12,7 @@ import sys
 import threading
 
 
-cache_format_version = 5
+cache_format_version = 6
 cache_dir = os.path.join(os.environ['HOME'], '.cache', 'company-ngram')
 log_file = os.path.join(cache_dir, 'ngram.py.log')
 
@@ -292,22 +292,21 @@ def _search(
     sym_of_w = db['sym_of_w']
     w_of_sym = db['w_of_sym']
     tree = db['tree']
-    for ws in fuzzy_queries(ws):
-        if all(w is None for w in ws):
-            continue
-        if ws in cache:
-            logging.info('hit:\t{}\t{}'.format(len(cache[ws]), ws))
-            wcs = cache[ws]
+    for syms in list(fuzzy_queries(encode(ws, sym_of_w, not_found)))[:-1]:
+        if syms in cache:
+            logging.info('hit:\t{}\t{}'.format(len(cache[syms]), syms))
+            wcs = cache[syms]
         else:
-            syms = encode(ws, sym_of_w, not_found)
             if not_found in syms:
-                cache[ws] = ()
+                cache[syms] = ()
                 continue
             wcs = tuple((w_of_sym[s], c) for s, c in candidates(tree, syms))
-            cache[ws] = wcs
-            logging.info('set:\t{}\t{}'.format(len(wcs), ws))
+            cache[syms] = wcs
+            logging.info('set:\t{}\t{}'.format(len(wcs), syms))
+        if not wcs:
+            continue
         for w, c in yield_without_dup(wcs, seen):
-            yield w, c, ws
+            yield w, c, syms
 
 
 def yield_without_dup(wcs, seen):
