@@ -3,6 +3,7 @@
 import atexit
 import array
 import bisect
+import collections
 import itertools
 import logging
 import logging.handlers
@@ -383,13 +384,7 @@ def range_of(xs, y, lo, hi):
 
 
 def count_candidates(ws):
-    d = {}
-    for w in ws:
-        if w in d:
-            d[w] += 1
-        else:
-            d[w] = 1
-    return d.items()
+    return collections.Counter(ws).items()
 
 
 def optimize_query(ws):
