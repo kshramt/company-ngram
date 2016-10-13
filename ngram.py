@@ -110,7 +110,7 @@ def usage_and_exit(s=1):
         n_out_max: restrict number of candidates
                    no restriction is imposed if n_out_max < 0
         timeout: restrict response time
-                 no restrict is imposed if timeout < 0
+                 no restriction is imposed if timeout < 0
         """.format(__file__),
         file=sys.stderr,
     )
