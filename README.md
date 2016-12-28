@@ -55,11 +55,6 @@ Hence, even if your `*.txt` does not contain the word `Aki`, you still have chan
 wget --directory-prefix ~/data/ngram    https://www.rfc-editor.org/rfc/rfc{5661,6716,4949}.txt
 ```
 
-## Tips
-
-This backend may not work nicely if `company-idle-delay` is too small.
-I am setting `company-idle-delay` as 0.2 s.
-
 ## License
 
 [The GNU General Public License version 3](http://www.gnu.org/licenses/).
