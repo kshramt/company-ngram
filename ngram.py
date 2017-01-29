@@ -13,12 +13,15 @@ import sys
 import threading
 
 
-cache_format_version = 6
+cache_format_version = 7
 cache_dir = os.path.join(os.environ['HOME'], '.cache', 'company-ngram')
 log_file = os.path.join(cache_dir, 'ngram.py.log')
 
 
 # -------- main
+
+
+not_found = -1
 
 
 def main(argv):
@@ -70,7 +73,6 @@ def main(argv):
     threading.Thread(target=lazy_load_db).start()
 
     stop = lambda: None
-    not_found = -1
     for l in sys.stdin:
         stop()
         words = l.split()
@@ -94,7 +96,6 @@ def main(argv):
             tuple(words[max(len(words) - (n - 1), 2):]),
             n_out_max,
             cache,
-            not_found,
         ))
         stop, dump = make_dump(results)
         if timeout >= 0:
@@ -258,7 +259,7 @@ def format_query(ngram):
 
 
 def _format_query(w):
-    if w is None:
+    if w is not_found:
         return '0'
     else:
         return '1'
@@ -272,10 +273,9 @@ def search(
         ws,
         n_out_max,
         cache,
-        not_found,
 ):
     if db:
-        ret = _search(db, ws, cache, not_found)
+        ret = _search(db, ws, cache)
         if n_out_max < 0:
             return ret
         return itertools.islice(ret, n_out_max)
@@ -287,20 +287,18 @@ def _search(
         db,
         ws,
         cache,
-        not_found,
 ):
     seen = set()
     sym_of_w = db['sym_of_w']
     w_of_sym = db['w_of_sym']
     tree = db['tree']
-    for syms in list(fuzzy_queries(encode(ws, sym_of_w, not_found)))[:-1]:
+    for syms in fuzzy_queries(encode(ws, sym_of_w)):
+        if all(sym == not_found for sym in syms):
+            continue
         if syms in cache:
             logging.info('hit:\t{}\t{}'.format(len(cache[syms]), syms))
             wcs = cache[syms]
         else:
-            if not_found in syms:
-                cache[syms] = ()
-                continue
             wcs = tuple((w_of_sym[s], c) for s, c in candidates(tree, syms))
             cache[syms] = wcs
             logging.info('set:\t{}\t{}'.format(len(wcs), syms))
@@ -337,7 +335,7 @@ def candidates(tree, syms):
 def _candidates(tree, syms, lo, hi):
     if syms:
         s = syms[0]
-        if s is None:
+        if s is not_found:
             return _candidates_seq(tree, syms, range(lo, hi))
         i1, i2 = range_of(tree[0], s, lo, hi)
         if i2 < i1:
@@ -350,7 +348,7 @@ def _candidates(tree, syms, lo, hi):
 def _candidates_seq(tree, syms, inds):
     if syms:
         s = syms[0]
-        if s is None:
+        if s is not_found:
             return _candidates_seq(tree[1:], syms[1:], inds)
         t0 = tree[0]
         return _candidates_seq(tree[1:], syms[1:], (i for i in inds if t0[i] == s))
@@ -390,18 +388,18 @@ def count_candidates(ws):
 def optimize_query(ws):
     i = 0
     for w in ws:
-        if w is None:
+        if w is not_found:
             i += 1
         else:
             break
     return ws[i:]
 
 
-def encode(ws, sym_of_w, not_found):
-    return tuple(_encode(w, sym_of_w, not_found) for w in ws)
+def encode(ws, sym_of_w):
+    return tuple(_encode(w, sym_of_w) for w in ws)
 
 
-def _encode(w, sym_of_w, not_found):
+def _encode(w, sym_of_w):
     if w is not None:
         return sym_of_w.get(w, not_found)
 
@@ -477,11 +475,17 @@ type_code_of = make_type_code_of()
 
 def fuzzy_queries(ws):
     for q in itertools.product(
-            *[(w, None)
+            *[_query_entry(w)
               for w
               in reversed(ws)]
     ):
         yield tuple(reversed(q))
+
+
+def _query_entry(w):
+    if w == not_found:
+        return (not_found,)
+    return (w, not_found)
 
 
 def each_cons(xs, n):
