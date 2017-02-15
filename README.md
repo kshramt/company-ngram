@@ -9,7 +9,7 @@ The N-gram data is automatically constructed from `*.txt` files placed directly 
 If you set `company-ngram-n` to `4`, three words before the cursor are used to produce completion candidates.
 
 To mitigate the data sparsity problem, this backend uses a fuzzy-matching strategy.
-Given the following sentence, `Dear Dr. Aki, ▍`, this backend produces completion candidates that match at least one of following prefixes,
+Given the following sentence, `Dear Dr. Aki, `, this backend produces completion candidates that match at least one of following prefixes,
 
 ```
 Dear Dr. Aki,
