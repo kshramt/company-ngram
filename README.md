@@ -4,7 +4,7 @@ A company backend for N-gram based completion.
 
 ![](screenshot.jpg)
 
-This backend produces completion candidates that are fuzzily matching N-gram data.
+This backend produces completion candidates that are fuzzily matching to N-gram data.
 The N-gram data is automatically constructed from `*.txt` files placed directly under `company-ngram-data-dir` directory.
 If you set `company-ngram-n` to `4`, three words before the cursor are used to produce completion candidates.
 
@@ -40,7 +40,7 @@ Hence, even if your `*.txt` does not contain the word `Aki`, you still have chan
   ; `M-x turn-off-company-ngram' on individual buffers
   ;
   ; save the cache of candidates
-  (run-with-idle-timer 3600 t
+  (run-with-idle-timer 7200 t
                        (lambda ()
                          (company-ngram-command "save_cache")
                          ))
