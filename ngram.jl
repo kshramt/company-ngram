@@ -6,7 +6,48 @@ using JLD
 const cache_format_version = 1
 const cache_dir = joinpath(ENV["HOME"], ".cache", "company-ngram")
 const log_file = joinpath(cache_dir, "ngram.jl.log")
+const n_inds_split = 32
 const not_found = Int32(0)
+
+
+abstract AbstractCons
+
+immutable Nil <: AbstractCons
+end
+
+const nil = Nil()
+
+immutable Cons{A, D} <: AbstractCons
+    a::A
+    d::D
+end
+
+function car(c::Cons)
+    c.a
+end
+
+function cdr(c::Cons)
+    c.d
+end
+
+function ncons(n, a, c)
+    for _ in 1:n
+        c = Cons(a, c)
+    end
+    c
+end
+
+function Base.start(c::AbstractCons)
+    c
+end
+
+function Base.done(::AbstractCons, s)
+    s == nil
+end
+
+function Base.next(::AbstractCons, s)
+    car(s), cdr(s)
+end
 
 
 function main(args)
@@ -15,17 +56,33 @@ function main(args)
     end
     const data_dir = args[1]
 
-    data = load(data_dir, n)
+    data = load(data_dir)
     sym_of_w = data[:sym_of_w]
     w_of_sym = data[:w_of_sym]
     inds_of_sym = data[:inds_of_sym]
     syms = data[:syms]
+
+    inds_cache = Dict{AbstractCons, Vector{eltype(syms)}}()
     for l in eachline(STDIN)
         words = split(l)
-        n = parse(Int, words[1])
-        n_out_max = parse(Int, words[2])
-        timeout = parse(Float64, words[3])
-        output(company_filter(candidates(syms, sym_of_w, w_o_sym, inds_of_sym, words[max(length(words) - n, 1):end])))
+        isempty(words) && continue
+        if words[1] == "command"
+            if length(words) > 2
+                if words[2] == "save_cache"
+                end
+            end
+        elseif length(words) > 3
+            n = parse(Int32, words[1])
+            n_out_max = parse(Int32, words[2])
+            timeout = parse(Float64, words[3])
+            candidates(
+                make_output(STDOUT, syms, w_of_sym, Set{eltype(syms)}())...,
+                [get(sym_of_w, words[i], not_found) for i in max(length(words) - n, 4):length(words)],
+                syms,
+                inds_of_sym,
+                inds_cache,
+            )
+        end
     end
 end
 
@@ -54,7 +111,7 @@ function load(data_dir)
     sym_of_w = Dict{String, Int32}()
     inds_of_sym = Vector{Vector{Int32}}()
     syms = Vector{Int32}()
-    for path in readdir(data_dir)
+    for path in sort(readdir(data_dir))
         path = joinpath(data_dir, path)
         if endswith(path, ".txt") && isfile(path)
             try
@@ -94,126 +151,121 @@ end
 
 # -------- output formatting
 
+function make_output(io, syms, w_of_sym, seen)
+    function output(prefix, inds)
+        for (sym, cnt) in sort_candidates(count_candidates(inds, syms))
+            if !(sym in seen)
+                println(io, w_of_sym[sym], "\t", cnt, ".", format_prefix(prefix))
+                push!(seen, sym)
+            end
+        end
+    end
 
-function company_filter(wcns)
-    [(w, format_ann(c, ngram)) for (w, c, ngram) in wcns]
+    function end_of_output()
+        print(io, "\n\n")
+        flush(io)
+    end
+
+    output, end_of_output
 end
 
 
-function format_ann(c, ngram)
-    string(c) + format_query(ngram)
+function format_prefix(prefix)
+    join((x == not_found ? "0" : "1" for x in prefix), "")
 end
 
 
-function format_query(ngram)
-    "." + join(map(_format_query, ngram), "")
+function sort_candidates(count_of_sym)
+    sort([kv for kv in count_of_sym], by=kv->kv[2], rev=true)
 end
 
 
-function _format_query(w)
-    w == not_found ? "0" : "1"
+function count_candidates{I}(inds::Vector{I}, syms::Vector{I})
+    count_of_sym = Dict{I, I}()
+    for ind in inds
+        if (-1 < ind < length(syms))
+            sym = syms[ind + 1]
+            if haskey(count_of_sym, sym)
+                count_of_sym[sym] += 1
+            else
+                count_of_sym[sym] = 1
+            end
+        end
+    end
+    count_of_sym
 end
 
 
 # -------- search candidates
 
 
-function candidates(tree, syms)
-    @assert !isempty(syms)
-    @assert length(tree) > length(syms)
-    syms = optimize_query(syms)
-    isempty(syms) && return ()
-    lo, hi = lo_hi_of(tree[1][1], tree[1][2], syms[1])
-    sort(count_candidates(_candidates(tree[2:end], syms[2:end], lo, hi), by=x->x[2], rev=true))
-end
+function candidates{I}(
+    output,
+    end_of_output,
+    full_prefix,
+    syms,
+    inds_of_sym::Vector{Vector{I}},
+    inds_cache::Dict{AbstractCons, Vector{I}},
+)
+    @assert length(full_prefix) > 0
 
-
-function _candidates(tree, syms, lo, hi)
-    if isempty(syms)
-        tree[1][lo:hi]
-    else
-        s = syms[1]
-        (s == not_found) && return _candidates_seq(tree, syms, lo:hi)
-        i1, i2 = range_of(tree[1], s, lo, hi)
-        (i2 < i1) && return ()
-        _candidates(tree[2:end], syms[2:end], i1, i2)
+    for shift in I(0):I((length(full_prefix) - 1))
+        sym = full_prefix[end - shift]
+        prefix = Cons(sym, ncons(shift, not_found, nil))
+        if 0 < sym <= length(syms)
+            inds = if shift == 0
+                inds_of_sym[sym]
+            else
+                inds_of_sym[sym] + shift
+            end
+            _candidates(
+                output,
+                full_prefix,
+                syms,
+                inds_of_sym,
+                inds_cache,
+                shift,
+                prefix,
+                inds,
+            )
+         end
     end
+    end_of_output()
 end
 
-
-function _candidates_seq(tree, syms, inds)
-    if isempty(syms)
-        t1 = tree[1]
-        (t1[i] for i in inds)
-    else
-        s = syms[1]
-        if s == not_found
-            _candidates_seq(tree[2:end], syms[2:end], inds)
-        else
-            t1 = tree[1]
-            _candidates_seq(tree[2:end], syms[2:end], (i for i in inds if t1[i] == s))
+function _candidates{I}(
+    output,
+    full_prefix,
+    syms,
+    inds_of_sym::Vector{Vector{I}},
+    inds_cache::Dict{AbstractCons, Vector{I}},
+    base_shift,
+    base_prefix,
+    base_inds,
+)
+    isempty(base_inds) && return
+    for shift in (base_shift + 1):(length(full_prefix) - 1)
+        sym = full_prefix[end - shift]
+        prefix = Cons(sym, ncons(shift - base_shift - 1, not_found, base_prefix))
+        if 0 < sym <= length(syms)
+            inds = if haskey(inds_cache, prefix)
+                inds_cache[prefix]
+            else
+                inds_cache[prefix] = [ind for ind in base_inds if get(syms, ind - shift, not_found) == sym]
+            end
+            _candidates(
+                output,
+                full_prefix,
+                syms,
+                inds_of_sym,
+                inds_cache,
+                shift,
+                prefix,
+                inds,
+            )
         end
     end
-end
-
-
-doc"""
-- `lo`: inclusive
-- `hi`: exclusive
-
-Use as `e[lo:hi]`.
-"""
-function lo_hi_of(entries, i2s, x)
-    if entries[i] == x
-        if i == 1
-            1, i2s[i]
-        else
-            i2s[i - 1] + 1, i2s[i]
-        end
-    else
-        2, 1
-    end
-end
-
-
-function range_of(xs, y, lo, hi)
-    i1 = searchsortedfirst(xs, y, lo, hi)
-    i2 = searchsortedlast(xs, y, il, hi)
-    i1, i2
-end
-
-
-# -------- utilities
-
-
-function count_candidates(ws)
-    wcs = Dict{eltype(ws), Int}()
-    for w in ws
-        if haskey(wcs, w)
-            wcs[w] += 1
-        else
-            wcs[w] = 1
-        end
-    end
-    wcs
-end
-
-
-function optimize_query(ws)
-    i = 1
-    for w in ws
-        if w == ""
-            i += 1
-        else
-            break
-        end
-    end
-    ws[i:end]
-end
-
-
-function encode(ws, sym_of_w, not_found)
-    tuple((get(sym_of_w, w, not_found) for w in ws)...)
+    output(base_prefix, base_inds)
 end
 
 
@@ -229,32 +281,7 @@ function mtime_max_of(paths)
 end
 
 
-function read_and_split_all_txt(paths)
-    vcat(map(path->open(fh->split(read(fh)), path), paths)...)
-end
 
-
-function coding(xs, code)
-    [code[x] for x in xs]
-end
-
-
-function make_code(ws)
-    w_of_sym = sort(unique(ws))
-    sym_of_w = Dict(w=>s for (s, w) in enumerate(w_of_sym))
-
-    sym_of_w, w_of_sym
-end
-
-
-# function load(data_dir, n)
-#     txt_file_names = txt_files_of(data_dir)
-#     mtime = max(map(mtime, txt_file_names))
-#     make_tree(each_cons(read_and_split_all_txt(txt_file_names), 2))
-# end
-
-
-
-if realpath(PROGRAM_FILE) == realpath(@__FILE__)
+if abspath(PROGRAM_FILE) == abspath(@__FILE__)
     main(ARGS)
 end
