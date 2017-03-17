@@ -1,3 +1,4 @@
+;; -*- lexical-binding: t -*-
 ;;; company-ngram.el --- N-gram based completion
 ;;
 ;; Author: kshramt
@@ -35,7 +36,6 @@
 
 (require 'cl-lib)
 (require 'company)
-(require 'json)
 
 (defgroup company-ngram nil
   "N-gram based completion"
@@ -85,13 +85,11 @@
   )
 
 
-(defvar company-ngram--candidates nil)
-(defvar company-ngram--prev-words nil)
-
-
 ;;;###autoload
 (defun turn-on-company-ngram ()
   (interactive)
+  (setq-local company-ngram--candidates nil)
+  (setq-local company-ngram--prev-words nil)
   (set (make-local-variable 'company-backends)
        (cons 'company-ngram-backend company-backends)))
 
