@@ -1,10 +1,10 @@
 #!/usr/bin/env julia
 
 
-const cache_format_version = 1
-const cache_dir = joinpath(ENV["HOME"], ".cache", "company-ngram", string(cache_format_version))
-const log_file = joinpath(cache_dir, "ngram.jl.log")
-const not_found = Int32(0)
+const _cache_format_version = 1
+const _cache_dir = joinpath(ENV["HOME"], ".cache", "company-ngram", string(_cache_format_version))
+const _log_file = joinpath(_cache_dir, "ngram.jl.log")
+const _not_found = Int32(0)
 
 
 abstract AbstractCons
@@ -53,28 +53,44 @@ function main(args)
     end
     const data_dir = args[1]
 
-    data = load(data_dir, joinpath(cache_dir*abspath(data_dir), "db.jls"))
+    cache_dir = _cache_dir*abspath(data_dir)
+    cache_file = joinpath(cache_dir, "cache.jls")
+    data = load(data_dir, joinpath(cache_dir, "db.jls"))
     sym_of_w = data[:sym_of_w]
     w_of_sym = data[:w_of_sym]
     inds_of_sym = data[:inds_of_sym]
     syms = data[:syms]
 
+    last_complete_time = 0.0
     inds_cache = Dict{AbstractCons, Vector{eltype(syms)}}()
     for l in eachline(STDIN)
         words = split(l)
         isempty(words) && continue
         if words[1] == "command"
-            if length(words) > 2
+            if length(words) > 1
                 if words[2] == "save_cache"
+                    @show last_complete_time mtime(cache_file)
+                    if last_complete_time > mtime(cache_file)
+                        mkpath(dirname(cache_file))
+                        open(cache_file, "w") do io
+                            serialize(
+                                io,
+                                Dict(
+                                    :inds_cache => inds_cache,
+                                ),
+                            )
+                        end
+                    end
                 end
             end
         elseif length(words) > 3
+            last_complete_time = Dates.datetime2unix(now(Dates.UTC))
             n = parse(Int32, words[1])
             n_out_max = parse(Int32, words[2])
             timeout = parse(Float64, words[3])
             candidates(
                 make_output(STDOUT, syms, w_of_sym, Set{eltype(syms)}())...,
-                [get(sym_of_w, words[i], not_found) for i in max(length(words) - n, 4):length(words)],
+                [get(sym_of_w, words[i], _not_found) for i in max(length(words) - n, 4):length(words)],
                 syms,
                 inds_of_sym,
                 inds_cache,
@@ -208,7 +224,7 @@ end
 
 
 function format_prefix(prefix)
-    join((x == not_found ? "0" : "1" for x in prefix), "")
+    join((x == _not_found ? "0" : "1" for x in prefix), "")
 end
 
 
@@ -249,7 +265,7 @@ function candidates{I}(
 
     for shift in I(0):I((length(full_prefix) - 1))
         sym = full_prefix[end - shift]
-        prefix = Cons(sym, ncons(shift, not_found, nil))
+        prefix = Cons(sym, ncons(shift, _not_found, nil))
         if 0 < sym <= length(syms)
             inds = if shift == 0
                 inds_of_sym[sym]
@@ -288,12 +304,12 @@ function _candidates{I}(
     isempty(base_inds) && return n_rest
     for shift in (base_shift + 1):(length(full_prefix) - 1)
         sym = full_prefix[end - shift]
-        prefix = Cons(sym, ncons(shift - base_shift - 1, not_found, base_prefix))
+        prefix = Cons(sym, ncons(shift - base_shift - 1, _not_found, base_prefix))
         if 0 < sym <= length(syms)
             inds = if haskey(inds_cache, prefix)
                 inds_cache[prefix]
             else
-                inds_cache[prefix] = [ind for ind in base_inds if get(syms, ind - shift, not_found) == sym]
+                inds_cache[prefix] = [ind for ind in base_inds if get(syms, ind - shift, _not_found) == sym]
             end
             n_rest = _candidates(
                 output,
