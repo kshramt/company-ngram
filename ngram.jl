@@ -1,12 +1,9 @@
 #!/usr/bin/env julia
 
-using JLD
-
 
 const cache_format_version = 1
-const cache_dir = joinpath(ENV["HOME"], ".cache", "company-ngram")
+const cache_dir = joinpath(ENV["HOME"], ".cache", "company-ngram", string(cache_format_version))
 const log_file = joinpath(cache_dir, "ngram.jl.log")
-const n_inds_split = 32
 const not_found = Int32(0)
 
 
@@ -56,7 +53,7 @@ function main(args)
     end
     const data_dir = args[1]
 
-    data = load(data_dir)
+    data = load(data_dir, joinpath(cache_dir*abspath(data_dir), "db.jls"))
     sym_of_w = data[:sym_of_w]
     w_of_sym = data[:w_of_sym]
     inds_of_sym = data[:inds_of_sym]
@@ -81,6 +78,7 @@ function main(args)
                 syms,
                 inds_of_sym,
                 inds_cache,
+                n_out_max,
             )
         end
     end
@@ -104,41 +102,69 @@ function usage_and_exit(s=1)
 end
 
 
-function load(data_dir)
+function load(data_dir, cache_file)
+    paths = txt_files_of(data_dir)
+    if mtime(cache_file) < maximum(mtime, paths)
+        success, ret  =_load_cache(cache_file)
+        success && return ret
+    end
+    ret = _load_txts(paths)
+    mkpath(dirname(cache_file))
+    open(cache_file, "w") do io
+        serialize(io, ret)
+    end
+    ret
+end
+
+
+function _load_cache(path)
+    success = true
+    ret = nothing
+    try
+        ret = open(path) do io
+            deserialize(io)
+        end
+    catch
+        success = false
+    end
+    gc()
+    success, ret
+end
+
+
+function _load_txts(paths)
     sym_new = Int32(0)
     ind = Int32(0)
 
     sym_of_w = Dict{String, Int32}()
     inds_of_sym = Vector{Vector{Int32}}()
     syms = Vector{Int32}()
-    for path in sort(readdir(data_dir))
-        path = joinpath(data_dir, path)
-        if endswith(path, ".txt") && isfile(path)
-            try
-                open(path) do io
-                    for l in eachline(io)
-                        for w in split(l)
-                            ind += one(I)
-                            if haskey(sym_of_w, w)
-                                push!(inds_of_sym[sym_of_w[w]], ind)
-                            else
-                                sym_of_w[w] = (sym_new += one(I))
-                                push!(inds_of_sym, [ind])
-                            end
-                            push!(syms, sym_of_w[w])
+    for path in paths
+        try
+            open(path) do io
+                for l in eachline(io)
+                    for w in split(l)
+                        ind += one(I)
+                        if haskey(sym_of_w, w)
+                            push!(inds_of_sym[sym_of_w[w]], ind)
+                        else
+                            sym_of_w[w] = (sym_new += one(I))
+                            push!(inds_of_sym, [ind])
                         end
+                        push!(syms, sym_of_w[w])
                     end
                 end
-            catch e
-                warn(e)
-                warn("Unable to load $path")
             end
+        catch e
+            warn(e)
+            warn("Unable to load $path")
         end
     end
     w_of_sym = Vector{String}(length(sym_of_w))
     for (w, sym) in sym_of_w
         w_of_sym[sym] = w
     end
+    gc()
 
     Dict(
         :sym_of_w=>sym_of_w,
@@ -149,16 +175,27 @@ function load(data_dir)
 end
 
 
+function txt_files_of(dir)
+    filter(path->endswith(path, ".txt") && isfile(path),
+           map(f->joinpath(dir, f),
+               sort(readdir(dir))))
+end
+
+
 # -------- output formatting
 
+
 function make_output(io, syms, w_of_sym, seen)
-    function output(prefix, inds)
+    function output(prefix, inds, n_rest::Integer)
         for (sym, cnt) in sort_candidates(count_candidates(inds, syms))
+            n_rest < 1 && break
             if !(sym in seen)
                 println(io, w_of_sym[sym], "\t", cnt, ".", format_prefix(prefix))
                 push!(seen, sym)
+                n_rest -= 1
             end
         end
+        n_rest
     end
 
     function end_of_output()
@@ -206,6 +243,7 @@ function candidates{I}(
     syms,
     inds_of_sym::Vector{Vector{I}},
     inds_cache::Dict{AbstractCons, Vector{I}},
+    n_rest::Integer,
 )
     @assert length(full_prefix) > 0
 
@@ -218,7 +256,7 @@ function candidates{I}(
             else
                 inds_of_sym[sym] + shift
             end
-            _candidates(
+            n_rest = _candidates(
                 output,
                 full_prefix,
                 syms,
@@ -227,7 +265,9 @@ function candidates{I}(
                 shift,
                 prefix,
                 inds,
+                n_rest,
             )
+            n_rest < 1 && break
          end
     end
     end_of_output()
@@ -242,8 +282,10 @@ function _candidates{I}(
     base_shift,
     base_prefix,
     base_inds,
+    n_rest::Integer,
 )
-    isempty(base_inds) && return
+    n_rest < 1 && return n_rest
+    isempty(base_inds) && return n_rest
     for shift in (base_shift + 1):(length(full_prefix) - 1)
         sym = full_prefix[end - shift]
         prefix = Cons(sym, ncons(shift - base_shift - 1, not_found, base_prefix))
@@ -253,7 +295,7 @@ function _candidates{I}(
             else
                 inds_cache[prefix] = [ind for ind in base_inds if get(syms, ind - shift, not_found) == sym]
             end
-            _candidates(
+            n_rest = _candidates(
                 output,
                 full_prefix,
                 syms,
@@ -262,24 +304,12 @@ function _candidates{I}(
                 shift,
                 prefix,
                 inds,
+                n_rest
             )
         end
     end
-    output(base_prefix, base_inds)
+    output(base_prefix, base_inds, n_rest)
 end
-
-
-function txt_files_of(dir)
-    map(f->joinpath(dir, f),
-        filter(f->endswith(f, ".txt"),
-               readdir(data)))
-end
-
-
-function mtime_max_of(paths)
-    maximum(mtime(path) for path in  paths)
-end
-
 
 
 if abspath(PROGRAM_FILE) == abspath(@__FILE__)
