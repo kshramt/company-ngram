@@ -62,7 +62,7 @@ end
 
 let
     dir = joinpath(dirname(@__FILE__), "t1")
-    data = load(dir)
+    data = mktemp((path, _)->load(dir, path))
     @test data == include(joinpath(dir, "data.jl"))
 
     let
@@ -76,6 +76,7 @@ let
             data[:syms],
             data[:inds_of_sym],
             inds_cache,
+            10000,
         )
         flush(io)
         out = readstring(seekstart(io))
@@ -92,8 +93,10 @@ let
             data[:syms],
             data[:inds_of_sym],
             inds_cache,
-        ) do prefix, inds
+            10000,
+        ) do prefix, inds, n_rest
             push!(output_args, (prefix, inds))
+            n_rest -= 1
         end
         @test output_args == [
             (Cons(int(1), Cons(int(2), nil)), int[2, 5]),
@@ -109,7 +112,7 @@ end
 
 let
     dir = joinpath(dirname(@__FILE__), "t2")
-    data = load(dir)
+    data = mktemp((path, _)->load(dir, path))
     @test data == include(joinpath(dir, "data.jl"))
 
     let
@@ -123,8 +126,10 @@ let
             data[:syms],
             data[:inds_of_sym],
             inds_cache,
-        ) do prefix, inds
+            1000,
+        ) do prefix, inds, n_rest
             push!(output_args, (prefix, inds))
+            n_rest -= 1
         end
         @test output_args == include(joinpath(dir, "output_args_1.jl"))
         @test inds_cache == include(joinpath(dir, "inds_cache_1.jl"))

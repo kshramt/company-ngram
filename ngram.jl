@@ -1,5 +1,18 @@
 #!/usr/bin/env julia
 
+show_unquoted(io::IO, ex)              = show_unquoted(io, ex, 0, 0)
+show_unquoted(io::IO, ex, indent::Int) = show_unquoted(io, ex, indent, 0)
+show_unquoted(io::IO, ex, ::Int,::Int) = show(io, ex)
+macro dbg(exs...)
+    blk = Expr(:block)
+    for ex in exs
+        push!(blk.args, :(println(STDERR, $(sprint(show_unquoted,ex)*" = "),
+                                  repr(begin value=$(esc(ex)) end))))
+    end
+    if !isempty(exs); push!(blk.args, :value); end
+    return blk
+end
+
 
 const _cache_format_version = 1
 const _cache_dir = joinpath(ENV["HOME"], ".cache", "company-ngram", string(_cache_format_version))
@@ -69,7 +82,6 @@ function main(args)
         if words[1] == "command"
             if length(words) > 1
                 if words[2] == "save_cache"
-                    @show last_complete_time mtime(cache_file)
                     if last_complete_time > mtime(cache_file)
                         mkpath(dirname(cache_file))
                         open(cache_file, "w") do io
@@ -202,13 +214,14 @@ end
 
 
 function make_output(io, syms, w_of_sym, seen)
-    function output(prefix, inds, n_rest::Integer)
+    function output{I}(prefix, inds, n_rest::I)
+        dec_ = -one(I)
         for (sym, cnt) in sort_candidates(count_candidates(inds, syms))
             n_rest < 1 && break
             if !(sym in seen)
                 println(io, w_of_sym[sym], "\t", cnt, ".", format_prefix(prefix))
                 push!(seen, sym)
-                n_rest -= 1
+                n_rest += dec_
             end
         end
         n_rest
