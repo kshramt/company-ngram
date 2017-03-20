@@ -27,9 +27,9 @@ end
 
 const nil = Nil()
 
-immutable Cons{A, D} <: AbstractCons
+immutable Cons{A} <: AbstractCons
     a::A
-    d::D
+    d
 end
 
 function car(c::Cons)
